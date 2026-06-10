@@ -1,0 +1,20 @@
+# Default values for visionquery-helm.
+replicaCount: 2
+
+image:
+  repository: visionquery-api
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+service:
+  type: ClusterIP
+  port: 8000
+
+resources:
+  limits:
+    nvidia.com/gpu: "1"
+  requests:
+    nvidia.com/gpu: "1"
+
+nodeSelector:
+  accelerator: nvidia-h200

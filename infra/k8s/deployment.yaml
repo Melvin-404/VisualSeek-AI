@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: visionquery-api
+  namespace: visionquery
+  labels:
+    app: visionquery-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: visionquery-api
+  template:
+    metadata:
+      labels:
+        app: visionquery-api
+    spec:
+      containers:
+        - name: api
+          image: visionquery-api:latest
+          ports:
+            - containerPort: 8000
+          resources:
+            limits:
+              nvidia.com/gpu: "1" # Limit to 1 GPU allocation
+            requests:
+              nvidia.com/gpu: "1" # Request 1 GPU allocation
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: visionquery-web
+  namespace: visionquery
+  labels:
+    app: visionquery-web
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: visionquery-web
+  template:
+    metadata:
+      labels:
+        app: visionquery-web
+    spec:
+      containers:
+        - name: web
+          image: visionquery-web:latest
+          ports:
+            - containerPort: 3000

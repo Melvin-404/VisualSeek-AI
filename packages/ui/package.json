@@ -1,0 +1,14 @@
+{
+  "name": "@visionquery/ui",
+  "version": "1.0.0",
+  "private": true,
+  "main": "index.ts",
+  "types": "index.ts",
+  "devDependencies": {
+    "react": "^19.0.0",
+    "typescript": "^5.3.3"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0"
+  }
+}

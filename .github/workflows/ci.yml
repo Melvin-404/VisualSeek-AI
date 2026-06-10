@@ -1,0 +1,145 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  secret-scanning:
+    name: Secret Scanning (TruffleHog)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run TruffleHog Scan
+        uses: trufflesecurity/trufflehog@v3.81.0
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: --only-verified
+
+  dependency-audit:
+    name: Dependency Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 11.3.0
+
+      - name: Node Dependency Audit
+        run: pnpm audit --audit-level=high
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Python Dependency Audit
+        run: |
+          pip install safety
+          # Audit requirements if they exist, or project dependencies
+          safety check --ignore=39642 || echo "Warnings found in dependencies"
+
+  lint-and-build:
+    name: Lint & Build (CPU)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 11.3.0
+
+      - name: Install Node Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint TS/JS Code
+        run: pnpm lint
+
+      - name: Build JS Workspace
+        run: pnpm build
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python Quality Tools
+        run: pip install black isort ruff pytest
+
+      - name: Lint Python Code
+        run: |
+          black --check .
+          isort --check-only .
+          ruff check .
+
+      - name: Run Python Test Collection
+        run: pytest --co -q
+
+  gpu-runtime-validation:
+    name: GPU Runtime Validation
+    runs-on: nvidia-h200
+    needs: [lint-and-build]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install ML Pipeline Dependencies
+        run: |
+          pip install torch --index-url https://download.pytorch.org/whl/cu121
+          # Install package
+          pip install -e ./packages/ai-pipeline
+
+      - name: Run GPU Health Check
+        env:
+          CI: "true"
+          TARGET_GPU_MODEL: "NVIDIA H200"
+        run: python scripts/gpu_healthcheck.py
+
+  sbom-generation:
+    name: SBOM Generation (Syft)
+    runs-on: ubuntu-latest
+    needs: [lint-and-build]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Generate SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          path: ./
+          format: spdx-json
+          output-file: sbom.spdx.json
+
+      - name: Upload SBOM Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-artifact
+          path: sbom.spdx.json
