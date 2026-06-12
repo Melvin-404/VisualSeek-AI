@@ -1,0 +1,163 @@
+Below are example queries and their expected structured outputs. Use these as a guide for formatting your response.
+
+---
+
+User: "Show me all red cars in parking lot A from last 2 hours"
+```json
+{
+  "intent_type": "object_search",
+  "object_class": "car",
+  "attributes": ["red"],
+  "color": "red",
+  "time_range": {"description": "last 2 hours", "relative": "last_2_hours"},
+  "camera_ids": [],
+  "event_type": null,
+  "spatial_zone": "parking lot A",
+  "negations": [],
+  "rewritten_query": "red colored car automobile vehicle in parking lot area A within the last 2 hours"
+}
+```
+
+---
+
+User: "Find people NOT wearing masks in the lobby yesterday afternoon"
+```json
+{
+  "intent_type": "object_search",
+  "object_class": "person",
+  "attributes": [],
+  "color": null,
+  "time_range": {"description": "yesterday afternoon", "relative": "yesterday_afternoon"},
+  "camera_ids": [],
+  "event_type": null,
+  "spatial_zone": "lobby",
+  "negations": ["wearing mask"],
+  "rewritten_query": "person people pedestrian without face mask not wearing mask in the lobby entrance area yesterday afternoon"
+}
+```
+
+---
+
+User: "Cuántos vehículos pasaron por la cámara 3 hoy?"
+```json
+{
+  "intent_type": "statistical_query",
+  "object_class": "car",
+  "attributes": [],
+  "color": null,
+  "time_range": {"description": "hoy (today)", "relative": "today"},
+  "camera_ids": ["cam-003"],
+  "event_type": null,
+  "spatial_zone": null,
+  "negations": [],
+  "rewritten_query": "count number of vehicles cars trucks passing through camera 3 today"
+}
+```
+
+---
+
+User: "Any loitering near emergency exit on cam-006 between 9pm and 11pm?"
+```json
+{
+  "intent_type": "event_search",
+  "object_class": "person",
+  "attributes": [],
+  "color": null,
+  "time_range": {"description": "between 9pm and 11pm", "relative": "tonight_9pm_to_11pm"},
+  "camera_ids": ["cam-006"],
+  "event_type": "loitering",
+  "spatial_zone": "emergency exit",
+  "negations": [],
+  "rewritten_query": "person loitering lingering standing idle suspicious behavior near emergency exit door camera 6 between 9pm and 11pm tonight"
+}
+```
+
+---
+
+User: "Personne avec un sac à dos bleu courant dans le couloir"
+```json
+{
+  "intent_type": "object_search",
+  "object_class": "person",
+  "attributes": ["carrying blue backpack", "running"],
+  "color": "blue",
+  "time_range": null,
+  "camera_ids": [],
+  "event_type": null,
+  "spatial_zone": "corridor",
+  "negations": [],
+  "rewritten_query": "person running with blue backpack bag in the corridor hallway"
+}
+```
+
+---
+
+User: "Which camera had the most foot traffic this week?"
+```json
+{
+  "intent_type": "comparison",
+  "object_class": "person",
+  "attributes": [],
+  "color": null,
+  "time_range": {"description": "this week", "relative": "this_week"},
+  "camera_ids": [],
+  "event_type": null,
+  "spatial_zone": null,
+  "negations": [],
+  "rewritten_query": "compare cameras for highest foot traffic pedestrian count person activity this week busiest camera"
+}
+```
+
+---
+
+User: "Person in a black jacket carrying a box, not wearing a helmet, near loading dock cam-004"
+```json
+{
+  "intent_type": "object_search",
+  "object_class": "person",
+  "attributes": ["wearing black jacket", "carrying box"],
+  "color": "black",
+  "time_range": null,
+  "camera_ids": ["cam-004"],
+  "event_type": null,
+  "spatial_zone": "loading dock",
+  "negations": ["wearing helmet"],
+  "rewritten_query": "person man woman wearing black jacket coat carrying box package near loading dock area without helmet camera 4"
+}
+```
+
+---
+
+User: "有人在停车场打架吗?"
+```json
+{
+  "intent_type": "event_search",
+  "object_class": "person",
+  "attributes": [],
+  "color": null,
+  "time_range": null,
+  "camera_ids": [],
+  "event_type": "fighting",
+  "spatial_zone": "parking lot",
+  "negations": [],
+  "rewritten_query": "people persons fighting physical altercation violence in the parking lot area"
+}
+```
+
+---
+
+User: "Weiße Lieferwagen, die gestern Abend den Ladebereich betreten haben"
+```json
+{
+  "intent_type": "event_search",
+  "object_class": "truck",
+  "attributes": ["white", "delivery van"],
+  "color": "white",
+  "time_range": {"description": "gestern Abend (yesterday evening)", "relative": "yesterday_evening"},
+  "camera_ids": [],
+  "event_type": null,
+  "spatial_zone": "loading area",
+  "negations": [],
+  "rewritten_query": "white delivery van truck entering the loading dock area yesterday evening"
+}
+```

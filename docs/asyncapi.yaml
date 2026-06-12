@@ -1,0 +1,138 @@
+asyncapi: 2.6.0
+info:
+  title: VisionQuery AI WebSocket Event Stream Specification
+  version: 1.0.0
+  description: |
+    This specification outlines real-time events published by the FastAPI backend to frontend clients via WebSockets, including object detections and camera status updates.
+
+servers:
+  development:
+    url: ws://localhost:8000/api/v1/ws
+    protocol: ws
+    description: Local development WebSocket gateway server
+
+channels:
+  /api/v1/ws:
+    description: Bi-directional real-time WebSocket channel
+    bindings:
+      ws:
+        queryParameters:
+          type: object
+          properties:
+            token:
+              type: string
+              description: JWT bearer authentication token
+            tenant_id:
+              type: string
+              description: Tenant organization UUID
+          required:
+            - token
+            - tenant_id
+    publish:
+      summary: Send subscriptions or control messages from client to server
+      operationId: sendControlMessage
+      message:
+        $ref: '#/components/messages/ClientControlMessage'
+    subscribe:
+      summary: Stream real-time camera alerts and detected objects from server to client
+      operationId: streamEvents
+      message:
+        oneOf:
+          - $ref: '#/components/messages/CameraStatusEvent'
+          - $ref: '#/components/messages/ObjectDetectionEvent'
+
+components:
+  messages:
+    ClientControlMessage:
+      name: ClientControlMessage
+      title: Client Control Message
+      summary: Request to subscribe/unsubscribe to specific camera streams
+      payload:
+        type: object
+        properties:
+          action:
+            type: string
+            enum: [subscribe, unsubscribe]
+          camera_id:
+            type: string
+            format: uuid
+        required:
+          - action
+          - camera_id
+
+    CameraStatusEvent:
+      name: CameraStatusEvent
+      title: Camera Status Alert Event
+      summary: Real-time update indicating camera state changes (online, offline)
+      payload:
+        type: object
+        properties:
+          event_type:
+            type: string
+            const: camera_status
+          camera_id:
+            type: string
+            format: uuid
+          status:
+            type: string
+            enum: [online, offline, degraded]
+          timestamp_ms:
+            type: integer
+            format: int64
+        required:
+          - event_type
+          - camera_id
+          - status
+          - timestamp_ms
+
+    ObjectDetectionEvent:
+      name: ObjectDetectionEvent
+      title: Real-Time Object Detection Event
+      summary: Streams detected object bounding boxes, labels, and tracking IDs
+      payload:
+        type: object
+        properties:
+          event_type:
+            type: string
+            const: object_detection
+          camera_id:
+            type: string
+            format: uuid
+          timestamp_ms:
+            type: integer
+            format: int64
+          detections:
+            type: array
+            items:
+              type: object
+              properties:
+                track_id:
+                  type: integer
+                class_label:
+                  type: string
+                confidence:
+                  type: number
+                  minimum: 0.0
+                  maximum: 1.0
+                bbox:
+                  type: object
+                  properties:
+                    x:
+                      type: number
+                      description: Normalized bounding box X coordinate
+                    y:
+                      type: number
+                      description: Normalized bounding box Y coordinate
+                    w:
+                      type: number
+                      description: Normalized width
+                    h:
+                      type: number
+                      description: Normalized height
+                  required: [x, y, w, h]
+              required: [track_id, class_label, confidence, bbox]
+        required:
+          - event_type
+          - camera_id
+          - timestamp_ms
+          - detections

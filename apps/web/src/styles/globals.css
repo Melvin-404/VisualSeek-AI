@@ -1,0 +1,102 @@
+@import "tailwindcss";
+
+@theme {
+  /* NVIDIA-inspired dark palette */
+  --color-background: #0a0a0a;
+  --color-foreground: #e5e5e5;
+  --color-card: #121212;
+  --color-card-foreground: #e5e5e5;
+  --color-popover: #121212;
+  --color-popover-foreground: #e5e5e5;
+  --color-primary: #76b900;
+  --color-primary-foreground: #0a0a0a;
+  --color-secondary: #1a1a2e;
+  --color-secondary-foreground: #e5e5e5;
+  --color-muted: #1a1a1a;
+  --color-muted-foreground: #a3a3a3;
+  --color-accent: #76b900;
+  --color-accent-foreground: #0a0a0a;
+  --color-destructive: #ef4444;
+  --color-destructive-foreground: #fafafa;
+  --color-border: #262626;
+  --color-input: #262626;
+  --color-ring: #76b900;
+  --color-sidebar: #0f0f0f;
+  --color-sidebar-foreground: #a3a3a3;
+  --color-sidebar-active: #76b900;
+  --color-success: #22c55e;
+  --color-warning: #eab308;
+  --color-info: #3b82f6;
+
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+@layer base {
+  *,
+  *::before,
+  *::after {
+    border-color: var(--color-border);
+  }
+
+  html {
+    color-scheme: dark;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Focus ring for WCAG 2.1 AA keyboard navigation */
+  :focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: var(--color-background);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-muted-foreground);
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .gpu-glow {
+    box-shadow: 0 0 20px rgba(118, 185, 0, 0.15),
+      0 0 40px rgba(118, 185, 0, 0.05);
+  }
+
+  .glass {
+    background: rgba(18, 18, 18, 0.8);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(118, 185, 0, 0.1);
+  }
+}

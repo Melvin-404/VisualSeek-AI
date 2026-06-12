@@ -2,5 +2,8 @@ packages:
   - 'apps/*'
   - 'packages/*'
 allowBuilds:
+  '@sentry/cli': true
+  core-js-pure: true
+  esbuild: true
   sharp: true
   unrs-resolver: true

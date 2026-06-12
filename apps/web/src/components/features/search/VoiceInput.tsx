@@ -1,0 +1,156 @@
+"use client";
+
+import React, { useState, useRef } from "react";
+import { Mic, Square, Loader2, AlertCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useSession } from "next-auth/react";
+import { env } from "@/env";
+
+interface VoiceInputProps {
+  onTranscript: (text: string) => void;
+  disabled?: boolean;
+}
+
+export default function VoiceInput({ onTranscript, disabled }: VoiceInputProps) {
+  const { data: session } = useSession();
+  const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+
+  const startRecording = async () => {
+    setError(null);
+    audioChunksRef.current = [];
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
+      
+      mediaRecorderRef.current = mediaRecorder;
+      
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+        await uploadAndTranscribe(audioBlob);
+        
+        // Stop all tracks to release microphone
+        stream.getTracks().forEach((track) => track.stop());
+      };
+
+      mediaRecorder.start(200);
+      setIsRecording(true);
+    } catch (err) {
+      console.error("Failed to start voice recording", err);
+      setError("Microphone access denied or unsupported.");
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
+  };
+
+  const uploadAndTranscribe = async (audioBlob: Blob) => {
+    setIsTranscribing(true);
+    setError(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", audioBlob, "recording.webm");
+
+      // Pass mock-token or session token for auth
+      const token = session?.accessToken || "mock-token";
+      
+      const response = await fetch(
+        `${env.NEXT_PUBLIC_API_URL}/api/v1/chat/transcribe?token=${token}`,
+        {
+          method: "POST",
+          headers: {
+            "X-Tenant-ID": "11111111-1111-1111-1111-111111111111",
+          },
+          body: formData,
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Server returned status ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (data.text) {
+        onTranscript(data.text);
+      }
+    } catch (err) {
+      console.error("Transcription failed", err);
+      setError("Failed to transcribe audio.");
+    } finally {
+      setIsTranscribing(false);
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      {isRecording ? (
+        <Button
+          type="button"
+          variant="destructive"
+          size="icon"
+          className="h-10 w-10 animate-pulse rounded-full shadow-[0_0_15px_rgba(239,68,68,0.4)] cursor-pointer"
+          onClick={stopRecording}
+          disabled={disabled}
+        >
+          <Square className="h-4 w-4" />
+        </Button>
+      ) : isTranscribing ? (
+        <Button
+          type="button"
+          variant="secondary"
+          size="icon"
+          className="h-10 w-10 rounded-full cursor-not-allowed"
+          disabled
+        >
+          <Loader2 className="h-4 w-4 animate-spin text-primary" />
+        </Button>
+      ) : (
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="h-10 w-10 rounded-full border-border hover:border-primary/50 text-muted-foreground hover:text-primary transition-all cursor-pointer"
+          onClick={startRecording}
+          disabled={disabled || isTranscribing}
+        >
+          <Mic className="h-4 w-4" />
+        </Button>
+      )}
+
+      {/* Visual active waves */}
+      {isRecording && (
+        <div className="flex items-center gap-0.5 px-2">
+          <span className="h-3 w-0.5 bg-destructive animate-bounce" style={{ animationDelay: "0ms" }} />
+          <span className="h-4.5 w-0.5 bg-destructive animate-bounce" style={{ animationDelay: "150ms" }} />
+          <span className="h-3.5 w-0.5 bg-destructive animate-bounce" style={{ animationDelay: "300ms" }} />
+          <span className="h-5 w-0.5 bg-destructive animate-bounce" style={{ animationDelay: "450ms" }} />
+          <span className="h-3 w-0.5 bg-destructive animate-bounce" style={{ animationDelay: "600ms" }} />
+          <span className="text-[10px] text-destructive font-bold ml-1 uppercase tracking-widest">Rec</span>
+        </div>
+      )}
+
+      {error && (
+        <div className="flex items-center gap-1 text-[10px] text-destructive font-semibold">
+          <AlertCircle className="h-3.5 w-3.5" />
+          <span>{error}</span>
+        </div>
+      )}
+    </div>
+  );
+}

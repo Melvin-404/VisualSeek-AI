@@ -6,6 +6,36 @@ dependencies = [
     "fastapi>=0.111.0",
     "pydantic-settings>=2.3.0",
     "uvicorn>=0.30.0",
+    "sqlalchemy>=2.0.30",
+    "alembic>=1.13.1",
+    "psycopg[binary]>=3.1.19",
+    "pgvector>=0.2.5",
+    "cryptography>=42.0.5",
+    "structlog>=24.1.0",
+    "opentelemetry-api>=1.24.0",
+    "opentelemetry-sdk>=1.24.0",
+    "opentelemetry-instrumentation-fastapi>=0.45b0",
+    "opentelemetry-exporter-otlp>=1.24.0",
+    "prometheus-fastapi-instrumentator>=7.0.0",
+    "slowapi>=0.1.9",
+    "redis>=5.0.4",
+    "pyjwt>=2.8.0",
+    "email-validator>=2.1.0.post1",
+    "python-jose[cryptography]>=3.3.0",
+    "passlib>=1.7.4",
+    "sentence-transformers>=3.0.0",
+    "nltk>=3.8.0",
+    "shapely>=2.0.0",
+    "openai>=1.0.0",
+    "anthropic>=0.18.0",
+    "langchain>=0.1.0",
+    "langchain-community>=0.0.10",
+    "langchain-openai>=0.0.2",
+    "langchain-anthropic>=0.1.0",
+    "spacy>=3.7.0",
+    "dateparser>=1.2.0",
+    "python-multipart>=0.0.18",
+    "ai-pipeline",
 ]
 requires-python = ">=3.12"
 
@@ -13,8 +43,17 @@ requires-python = ">=3.12"
 dev = [
     "pytest>=8.2.0",
     "httpx>=0.27.0",
+    "pytest-asyncio>=0.23.6",
 ]
 
 [build-system]
 requires = ["setuptools>=61.0.0"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
+exclude = ["alembic*", "tests*", "scripts*"]
+
+[tool.uv.sources]
+ai-pipeline = { workspace = true }

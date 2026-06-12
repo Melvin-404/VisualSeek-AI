@@ -44,3 +44,26 @@ services:
             - driver: nvidia
               count: all
               capabilities: [gpu]
+
+  redis:
+    image: redis:7-alpine
+    container_name: visionquery-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0.5
+    container_name: visionquery-keycloak
+    command: start-dev
+    environment:
+      - KEYCLOAK_ADMIN=admin
+      - KEYCLOAK_ADMIN_PASSWORD=admin
+      - KC_DB=dev-mem
+    ports:
+      - "8080:8080"
+
+volumes:
+  redis_data:
+

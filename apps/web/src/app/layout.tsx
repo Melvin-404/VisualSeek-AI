@@ -1,14 +1,24 @@
-/**
- * Root Layout Component.
- *
- * This is the main HTML layout wrapper for the Next.js frontend application.
- */
-
 import React from "react";
+import type { Metadata, Viewport } from "next";
+import { Providers } from "@/components/features/providers";
+import "@/styles/globals.css";
 
-export const metadata = {
-  title: "Vision Query AI",
-  description: "Enterprise-grade GPU-powered Vision Analytics Platform",
+export const metadata: Metadata = {
+  title: {
+    default: "Vision Query AI",
+    template: "%s | Vision Query AI",
+  },
+  description: "Enterprise GPU-powered Vision Analytics Platform",
+  manifest: "/manifest.json",
+  icons: {
+    icon: "/favicon.ico",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#76b900",
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({
@@ -17,9 +27,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body>
-        <main>{children}</main>
+    <html lang="en" className="dark">
+      <body className="min-h-screen bg-background font-sans antialiased">
+        <Providers>{children}</Providers>
       </body>
     </html>
   );
