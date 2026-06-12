@@ -98,38 +98,38 @@ export default function VoiceInput({ onTranscript, disabled }: VoiceInputProps) 
   };
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2 shrink-0">
       {isRecording ? (
         <Button
           type="button"
           variant="destructive"
           size="icon"
-          className="h-10 w-10 animate-pulse rounded-full shadow-[0_0_15px_rgba(239,68,68,0.4)] cursor-pointer"
+          className="h-9 w-9 shrink-0 animate-pulse rounded-xl shadow-[0_0_15px_rgba(239,68,68,0.4)] cursor-pointer"
           onClick={stopRecording}
           disabled={disabled}
         >
-          <Square className="h-4 w-4" />
+          <Square className="h-3.5 w-3.5" />
         </Button>
       ) : isTranscribing ? (
         <Button
           type="button"
           variant="secondary"
           size="icon"
-          className="h-10 w-10 rounded-full cursor-not-allowed"
+          className="h-9 w-9 shrink-0 rounded-xl cursor-not-allowed"
           disabled
         >
-          <Loader2 className="h-4 w-4 animate-spin text-primary" />
+          <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
         </Button>
       ) : (
         <Button
           type="button"
           variant="outline"
           size="icon"
-          className="h-10 w-10 rounded-full border-border hover:border-primary/50 text-muted-foreground hover:text-primary transition-all cursor-pointer"
+          className="h-9 w-9 shrink-0 rounded-xl border-border hover:border-primary/50 text-muted-foreground hover:text-primary transition-all cursor-pointer"
           onClick={startRecording}
           disabled={disabled || isTranscribing}
         >
-          <Mic className="h-4 w-4" />
+          <Mic className="h-3.5 w-3.5" />
         </Button>
       )}
 

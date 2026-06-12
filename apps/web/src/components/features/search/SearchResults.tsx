@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { SlidersHorizontal, Download, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { motion, Variants } from "framer-motion";
 import ResultCard from "./ResultCard";
 
 interface Detection {
@@ -31,6 +32,29 @@ interface SearchResultsProps {
   activeQuery: string;
   onAnalyse: (result: SearchResult) => void;
 }
+
+const listContainerVariants: Variants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.06,
+    },
+  },
+};
+
+const itemVariants: Variants = {
+  hidden: { opacity: 0, y: 12 },
+  show: { 
+    opacity: 1, 
+    y: 0, 
+    transition: { 
+      type: "spring", 
+      stiffness: 120, 
+      damping: 14 
+    } 
+  },
+};
 
 export default function SearchResults({ results, activeQuery, onAnalyse }: SearchResultsProps) {
   const [cameraFilter, setCameraFilter] = useState<string>("all");
@@ -155,16 +179,22 @@ export default function SearchResults({ results, activeQuery, onAnalyse }: Searc
 
       {/* Grid displays */}
       {processedResults.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <motion.div
+          variants={listContainerVariants}
+          initial="hidden"
+          animate="show"
+          className="grid grid-cols-1 md:grid-cols-2 gap-4"
+        >
           {processedResults.map((result) => (
-            <ResultCard
-              key={result.id}
-              result={result}
-              onAnalyse={onAnalyse}
-              activeQuery={activeQuery}
-            />
+            <motion.div key={result.id} variants={itemVariants}>
+              <ResultCard
+                result={result}
+                onAnalyse={onAnalyse}
+                activeQuery={activeQuery}
+              />
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       ) : (
         <div className="glass rounded-xl p-10 text-center border-dashed border-border flex flex-col items-center justify-center gap-2">
           <EyeOff className="h-8 w-8 text-muted-foreground" />

@@ -552,3 +552,7 @@
 {"timestamp": "2026-06-11T18:02:28Z", "user_id": "system_user", "query": "show me melvin", "collection": "frame_embeddings", "results_count": 0, "latency_ms": 6227.753099999973}
 {"timestamp": "2026-06-11T18:03:06Z", "user_id": "system_user", "query": "show me a yellow car reversing", "collection": "frame_embeddings", "results_count": 8, "latency_ms": 5134.991699989769}
 {"timestamp": "2026-06-11T18:05:34Z", "user_id": "system_user", "query": "Show red cars in parking lot", "collection": "frame_embeddings", "results_count": 5, "latency_ms": 5064.630000008037}
+{"timestamp": "2026-06-12T05:56:01Z", "user_id": "system_user", "query": "show me where a black car passed", "collection": "frame_embeddings", "results_count": 7, "latency_ms": 1328.981599988765}
+{"timestamp": "2026-06-12T06:14:06Z", "user_id": "system_user", "query": "Yellow forklift near dock loading area", "collection": "frame_embeddings", "results_count": 10, "latency_ms": 181.53209998854436}
+{"timestamp": "2026-06-12T06:14:45Z", "user_id": "system_user", "query": "yellow car reverse parking", "collection": "frame_embeddings", "results_count": 8, "latency_ms": 65.93740000971593}
+{"timestamp": "2026-06-12T06:18:17Z", "user_id": "system_user", "query": "parked car", "collection": "frame_embeddings", "results_count": 8, "latency_ms": 64.11899998784065}

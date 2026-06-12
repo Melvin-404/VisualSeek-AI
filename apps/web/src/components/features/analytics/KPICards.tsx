@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Camera, AlertTriangle, Search, Cpu } from "lucide-react";
+import { Camera, AlertTriangle, Search, Cpu, RefreshCw } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface KPIData {
   total_cameras: number;
@@ -24,6 +25,31 @@ const MOCK_KPI_DATA: KPIData = {
   gpu_status: "mocked (CUDA unavailable)",
   gpu_name: "NVIDIA GeForce RTX 4060"
 };
+
+function AnimatedCounter({ value, suffix = "" }: { value: number; suffix?: string }) {
+  const [displayValue, setDisplayValue] = useState(0);
+
+  useEffect(() => {
+    let startTimestamp: number | null = null;
+    const duration = 800; // ms
+    const startValue = 0;
+
+    const step = (timestamp: number) => {
+      if (!startTimestamp) startTimestamp = timestamp;
+      const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+      // Ease out cubic
+      const ease = 1 - Math.pow(1 - progress, 3);
+      setDisplayValue(Math.floor(ease * (value - startValue) + startValue));
+      if (progress < 1) {
+        window.requestAnimationFrame(step);
+      }
+    };
+
+    window.requestAnimationFrame(step);
+  }, [value]);
+
+  return <span className="font-mono">{displayValue}{suffix}</span>;
+}
 
 export function KPICards() {
   const [data, setData] = useState<KPIData | null>(null);
@@ -130,10 +156,10 @@ export function KPICards() {
         {[1, 2, 3, 4].map((i) => (
           <div
             key={i}
-            className="rounded-xl border border-border bg-card p-5 animate-pulse"
+            className="rounded-xl border border-border/80 bg-card/25 p-5 animate-pulse"
           >
-            <div className="h-4 w-24 rounded bg-muted" />
-            <div className="mt-4 h-8 w-16 rounded bg-muted" />
+            <div className="h-3 w-20 rounded bg-muted" />
+            <div className="mt-4 h-7 w-12 rounded bg-muted" />
           </div>
         ))}
       </div>
@@ -143,37 +169,41 @@ export function KPICards() {
   const cards = [
     {
       title: "Active Cameras",
-      value: `${data.active_cameras} / ${data.total_cameras}`,
+      isRaw: true,
+      rawValue: `${data.active_cameras} / ${data.total_cameras}`,
+      value: data.active_cameras,
       sub: `${data.total_cameras - data.active_cameras} offline`,
       icon: Camera,
       color: "text-primary",
-      glow: "border-primary/20 hover:border-primary/40"
+      glow: "border-primary/20 hover:border-primary/50 hover:bg-primary/[0.01] hover:shadow-[0_0_20px_rgba(0,255,102,0.05)]"
     },
     {
-      title: "Events / Hour",
-      value: data.events_per_hour.toLocaleString(),
-      sub: "aggregated alerts",
+      title: "Threat Alerts / Hour",
+      value: data.events_per_hour,
+      sub: "aggregated vision threats",
       icon: AlertTriangle,
       color: "text-destructive",
-      glow: "border-destructive/20 hover:border-destructive/40"
+      glow: "border-destructive/20 hover:border-destructive/50 hover:bg-destructive/[0.01] hover:shadow-[0_0_20px_rgba(239,68,68,0.05)]"
     },
     {
       title: "Search Volume",
-      value: `${data.queries_per_minute} Q/min`,
+      value: data.queries_per_minute,
+      suffix: " Q/min",
       sub: `${data.average_search_latency_ms}ms avg latency`,
       icon: Search,
-      color: "text-info",
-      glow: "border-info/20 hover:border-info/40"
+      color: "text-accent",
+      glow: "border-accent/20 hover:border-accent/50 hover:bg-accent/[0.01] hover:shadow-[0_0_20px_rgba(0,240,255,0.05)]"
     },
     {
-      title: "GPU Memory Load",
-      value: `${data.gpu_utilization_percent}%`,
+      title: "GPU Load (CUDA)",
+      value: data.gpu_utilization_percent,
+      suffix: "%",
       sub: data.gpu_name 
-        ? `${data.gpu_name} ${data.gpu_status.includes("mock") ? "(Mocked)" : "Active"}` 
-        : (data.gpu_status.includes("mock") ? "NVIDIA GeForce RTX 4060 (Mocked)" : "NVIDIA GeForce RTX 4060 Active"),
+        ? `${data.gpu_name} ${data.gpu_status.includes("mock") ? "(Mock)" : "Active"}` 
+        : (data.gpu_status.includes("mock") ? "NVIDIA RTX 4060 (Mock)" : "NVIDIA RTX 4060 Active"),
       icon: Cpu,
-      color: "text-success",
-      glow: "border-success/20 hover:border-success/40"
+      color: "text-secondary",
+      glow: "border-secondary/20 hover:border-secondary/50 hover:bg-secondary/[0.01] hover:shadow-[0_0_20px_rgba(0,82,255,0.05)]"
     }
   ];
 
@@ -182,25 +212,40 @@ export function KPICards() {
       {cards.map((card) => (
         <div
           key={card.title}
-          className={`relative overflow-hidden rounded-xl border bg-card p-5 transition-all duration-300 hover:shadow-md ${card.glow}`}
+          className={cn(
+            "relative overflow-hidden rounded-xl border bg-card/40 backdrop-blur px-5 py-4.5 transition-all duration-300 glass select-none",
+            card.glow
+          )}
+          data-cursor="explore"
         >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+          <div className="flex items-center justify-between border-b border-border/40 pb-2.5">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
               {card.title}
             </span>
-            <card.icon className={`h-5 w-5 ${card.color}`} />
+            <card.icon className={cn("h-4 w-4", card.color)} />
           </div>
           <div className="mt-3">
-            <h3 className="text-2xl font-bold text-foreground font-mono">
-              {card.value}
+            <h3 className="text-2xl font-bold text-foreground">
+              {card.isRaw ? (
+                <span className="font-mono">{card.rawValue}</span>
+              ) : (
+                <AnimatedCounter value={card.value} suffix={card.suffix} />
+              )}
             </h3>
-            <p className="mt-1 text-xs text-muted-foreground">{card.sub}</p>
+            <p className="mt-1 text-[10px] font-medium text-muted-foreground/85">{card.sub}</p>
           </div>
-          {/* Subtle live indicator for active WS */}
+
+          {/* HUD Tech Corner Elements */}
+          <div className="absolute top-1 left-1 w-1 h-1 border-t border-l border-muted-foreground/30" />
+          <div className="absolute top-1 right-1 w-1 h-1 border-t border-r border-muted-foreground/30" />
+          <div className="absolute bottom-1 left-1 w-1 h-1 border-b border-l border-muted-foreground/30" />
+          <div className="absolute bottom-1 right-1 w-1 h-1 border-b border-r border-muted-foreground/30" />
+
+          {/* Active indicator */}
           {card.title === "Active Cameras" && connected && (
-            <div className="absolute top-2 right-2 flex h-2 w-2">
+            <div className="absolute top-3 right-8 flex h-1.5 w-1.5">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary"></span>
             </div>
           )}
         </div>

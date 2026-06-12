@@ -110,28 +110,37 @@ export function HeatmapView() {
   };
 
   return (
-    <div className="rounded-xl border border-border bg-card p-6">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+    <div 
+      className="rounded-xl border border-border/80 bg-card/45 glass p-6 select-none relative"
+      data-cursor="explore"
+    >
+      {/* HUD Tech Corner Elements */}
+      <div className="absolute top-1.5 left-1.5 w-1.5 h-1.5 border-t border-l border-muted-foreground/30" />
+      <div className="absolute top-1.5 right-1.5 w-1.5 h-1.5 border-t border-r border-muted-foreground/30" />
+      <div className="absolute bottom-1.5 left-1.5 w-1.5 h-1.5 border-b border-l border-muted-foreground/30" />
+      <div className="absolute bottom-1.5 right-1.5 w-1.5 h-1.5 border-b border-r border-muted-foreground/30" />
+
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-border/40 pb-4 mb-6">
         <div>
-          <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+          <h3 className="text-sm font-bold uppercase tracking-wider text-foreground flex items-center gap-2">
             Foot Traffic Heatmap
             <span className="group relative cursor-pointer">
               <Info className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-              <span className="absolute bottom-6 left-1/2 -translate-x-1/2 scale-0 rounded-md bg-popover p-2 text-xs text-popover-foreground w-48 transition-all duration-200 group-hover:scale-100 border border-border z-10">
+              <span className="absolute bottom-6 left-1/2 -translate-x-1/2 scale-0 rounded-md bg-popover p-2 text-[10px] text-popover-foreground w-48 transition-all duration-200 group-hover:scale-100 border border-border z-10">
                 Displays real-time and historical foot traffic density based on person detections.
               </span>
             </span>
           </h3>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-[10px] font-medium text-muted-foreground/80">
             Density distribution per zone per hour of the day
           </p>
         </div>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
           <span>Less</span>
-          <div className="h-3 w-3 rounded-sm bg-muted/10" />
-          <div className="h-3 w-3 rounded-sm bg-primary/20" />
-          <div className="h-3 w-3 rounded-sm bg-primary/50" />
-          <div className="h-3 w-3 rounded-sm bg-primary" />
+          <div className="h-3 w-3 rounded-sm bg-muted/10 border border-border/50" />
+          <div className="h-3 w-3 rounded-sm bg-primary/20 border border-primary/10" />
+          <div className="h-3 w-3 rounded-sm bg-primary/50 border border-primary/25" />
+          <div className="h-3 w-3 rounded-sm bg-primary border border-primary/50 shadow-[0_0_8px_rgba(0,255,102,0.3)]" />
           <span>More</span>
         </div>
       </div>

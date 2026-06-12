@@ -18,10 +18,13 @@ import {
   Trash2,
   ChevronRight,
   Maximize2,
-  X
+  X,
+  Target,
+  Cpu
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import VoiceInput from "./VoiceInput";
 import SearchResults from "./SearchResults";
 
@@ -605,150 +608,199 @@ export default function ChatInterface({ onAnalyseFrame }: ChatInterfaceProps) {
     ]);
   };
 
+  const [activeMessageId, setActiveMessageId] = useState<string | null>(null);
+
+  // Find active message (prioritizes assistant reply with results)
+  const activeMsg = (() => {
+    const active = messages.find((m) => m.id === activeMessageId);
+    if (active) return active;
+    // Fallback to the latest assistant message with results
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === "assistant" && messages[i].results) {
+        return messages[i];
+      }
+    }
+    return messages[messages.length - 1];
+  })();
+
+  const handleSelectMessage = (msgId: string) => {
+    const idx = messages.findIndex((m) => m.id === msgId);
+    if (idx === -1) return;
+    const msg = messages[idx];
+    if (msg.role === "user") {
+      // Find subsequent assistant message
+      const nextMsg = messages[idx + 1];
+      if (nextMsg && nextMsg.role === "assistant") {
+        setActiveMessageId(nextMsg.id);
+      } else {
+        setActiveMessageId(msgId);
+      }
+    } else {
+      setActiveMessageId(msgId);
+    }
+  };
+
+  // Aggregate detected entities in search results
+  const detectedEntities = React.useMemo(() => {
+    if (!activeMsg?.results) return [];
+    const counts: Record<string, number> = {};
+    activeMsg.results.forEach((res) => {
+      res.raw_labels.detections?.forEach((det) => {
+        const lbl = det.label.toLowerCase();
+        counts[lbl] = (counts[lbl] || 0) + 1;
+      });
+    });
+    return Object.entries(counts).map(([label, count]) => ({ label, count }));
+  }, [activeMsg]);
+
+  // Aggregate confidence score stats
+  const confidenceStats = React.useMemo(() => {
+    if (!activeMsg?.results || activeMsg.results.length === 0) return { max: 0, avg: 0 };
+    const scores = activeMsg.results.map((r) => r.score);
+    const max = Math.max(...scores);
+    const avg = scores.reduce((sum, s) => sum + s, 0) / scores.length;
+    return { max, avg };
+  }, [activeMsg]);
+
+  const formatVideoTime = (ms: number) => {
+    const totalSecs = Math.floor(ms / 1000);
+    const mins = Math.floor(totalSecs / 60);
+    const secs = totalSecs % 60;
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  };
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 min-h-[75vh]">
-      {/* Left Columns: Chat Threads & Input */}
-      <div className="lg:col-span-3 flex flex-col glass rounded-2xl border border-border overflow-hidden h-[75vh] bg-card/40 relative">
-        
+    <div className="flex flex-col lg:flex-row gap-5 w-full h-[calc(100vh-140px)] min-h-[500px]">
+      
+      {/* COLUMN 1: LEFT - Conversation (32% width) */}
+      <div className="w-full lg:w-[32%] shrink-0 flex flex-col border border-border/80 rounded-2xl overflow-hidden bg-card/25 backdrop-blur-sm relative h-full">
         {/* Chat Header */}
-        <div className="px-5 py-4 border-b border-border bg-card/60 flex justify-between items-center z-10">
+        <div className="px-4 py-3 border-b border-border bg-card/50 flex justify-between items-center shrink-0">
           <div className="flex items-center gap-2">
-            <Bot className="h-5 w-5 text-primary" />
+            <Bot className="h-4 w-4 text-primary animate-pulse" />
             <div>
-              <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                VisionQuery AI Assistant
-                <span className="h-2 w-2 rounded-full bg-success animate-pulse" />
+              <span className="text-xs font-bold text-foreground flex items-center gap-1.5 uppercase tracking-wide">
+                AI Investigator
+                <span className="relative flex h-1.5 w-1.5 ml-1">
+                  <span className={cn(
+                    "animate-ping absolute inline-flex h-full w-full rounded-full opacity-75",
+                    isMockMode ? "bg-warning" : isWsConnecting ? "bg-blue-500" : "bg-success"
+                  )} />
+                  <span className={cn(
+                    "relative inline-flex rounded-full h-1.5 w-1.5",
+                    isMockMode ? "bg-warning" : isWsConnecting ? "bg-blue-500" : "bg-success"
+                  )} />
+                </span>
               </span>
-              <span className="text-[10px] text-muted-foreground block">
-                Session: {sessionId}
+              <span className="text-[9px] font-mono text-muted-foreground block">
+                Session: {sessionId.slice(0, 12)}
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             {messages.length > 0 && (
               <>
                 <Button
                   variant="ghost"
-                  size="sm"
+                  size="icon"
                   onClick={handleExportPDF}
-                  className="h-8 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+                  className="h-7 w-7 text-muted-foreground hover:text-foreground cursor-pointer"
+                  title="PDF Report"
                 >
-                  <Download className="h-3.5 w-3.5 mr-1" />
-                  PDF Report
+                  <Download className="h-3.5 w-3.5" />
                 </Button>
                 <Button
                   variant="ghost"
-                  size="sm"
+                  size="icon"
                   onClick={handleClearHistory}
-                  className="h-8 text-xs text-destructive hover:text-destructive hover:bg-destructive/10 cursor-pointer"
+                  className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10 cursor-pointer"
+                  title="Clear history"
                 >
-                  <Trash2 className="h-3.5 w-3.5 mr-1" />
-                  Clear
+                  <Trash2 className="h-3.5 w-3.5" />
                 </Button>
               </>
             )}
           </div>
         </div>
 
-        {/* WebSocket Connection Error warnings */}
-        {wsError && (
-          <div className="bg-destructive/10 border-b border-destructive/20 px-4 py-2 flex items-center gap-2 text-xs text-destructive font-semibold">
-            <AlertCircle className="h-4 w-4" />
-            <span>{wsError}</span>
-          </div>
-        )}
+
 
         {/* Alert Registration Notification toast */}
         {alertSuccess && (
-          <div className="absolute top-16 left-1/2 -translate-x-1/2 bg-success/90 backdrop-blur text-black font-bold text-xs px-4 py-2.5 rounded-full shadow-lg z-50 flex items-center gap-2 animate-bounce">
-            <Bell className="h-4 w-4" />
+          <div className="absolute top-16 left-1/2 -translate-x-1/2 bg-success text-black font-bold text-[10px] px-3 py-1.5 rounded-full shadow-lg z-50 flex items-center gap-1.5 animate-bounce uppercase tracking-wide">
+            <Bell className="h-3.5 w-3.5" />
             <span>{alertSuccess}</span>
           </div>
         )}
 
         {/* Messages List Thread */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-6">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center max-w-md mx-auto space-y-3">
-              <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center shadow-[0_0_15px_rgba(118,185,0,0.15)] border border-primary/20">
-                <Sparkles className="h-6 w-6 text-primary animate-pulse" />
+            <div className="flex flex-col items-center justify-center h-full text-center max-w-[200px] mx-auto space-y-3">
+              <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20">
+                <Sparkles className="h-5 w-5 text-primary animate-pulse" />
               </div>
-              <h3 className="text-sm font-bold text-foreground">Initiate surveillance search thread</h3>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                VisionQuery parses multi-turn queries. Describe what you're looking for, then refine the search, highlight detections, or create alerts.
+              <h3 className="text-xs font-bold text-foreground uppercase tracking-wider">Initiate Search</h3>
+              <p className="text-[10px] text-muted-foreground leading-relaxed">
+                Describe target entities, colors, or locations. Results will populate center dashboard.
               </p>
             </div>
           ) : (
             messages.map((msg) => (
-              <div key={msg.id} className="space-y-4">
-                {/* Chat Bubble bubble */}
-                <div
-                  className={`flex gap-3 max-w-[85%] ${
-                    msg.role === "user" ? "ml-auto flex-row-reverse" : "mr-auto"
-                  }`}
-                >
-                  {/* Icon */}
-                  <div
-                    className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 border ${
-                      msg.role === "user"
-                        ? "bg-muted border-border text-foreground"
-                        : "bg-primary/15 border-primary/20 text-primary"
-                    }`}
-                  >
-                    {msg.role === "user" ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
-                  </div>
-
-                  {/* Body Bubble */}
-                  <div
-                    className={`rounded-2xl p-4 text-xs leading-relaxed border shadow-sm ${
-                      msg.role === "user"
-                        ? "bg-muted/70 border-border text-foreground"
-                        : "bg-card border-border text-foreground"
-                    }`}
-                  >
-                    {/* Render Text Content */}
-                    <div className="whitespace-pre-wrap font-medium">{msg.content}</div>
-
-                    {/* Natural Language Alert Creation Pill */}
-                    {msg.role === "user" && (
-                      <div className="mt-3 flex justify-end">
-                        <button
-                          onClick={() => handleCreateAlert(msg.content)}
-                          className="text-[9px] font-bold text-primary hover:underline flex items-center gap-1 bg-primary/5 border border-primary/20 px-2 py-0.5 rounded-full cursor-pointer uppercase tracking-wider"
-                        >
-                          <Bell className="h-2.5 w-2.5" />
-                          Monitor Query Pattern
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Loader during streaming */}
-                    {msg.role === "assistant" && msg.isStreaming && (
-                      <div className="flex items-center gap-1.5 mt-2">
-                        <Loader2 className="h-3 w-3 animate-spin text-primary" />
-                        <span className="text-[10px] text-muted-foreground italic font-semibold">
-                          Ingesting video feeds...
-                        </span>
-                      </div>
-                    )}
-                  </div>
+              <div 
+                key={msg.id} 
+                className={cn(
+                  "rounded-xl p-3 border text-[11px] leading-relaxed transition-all duration-200 cursor-pointer",
+                  msg.role === "user"
+                    ? "bg-muted/30 border-border/80 text-foreground ml-6 hover:bg-muted/40"
+                    : activeMsg?.id === msg.id
+                    ? "bg-primary/[0.02] border-primary/30 text-foreground mr-6"
+                    : "bg-card/40 border-border/60 text-foreground mr-6 hover:border-border"
+                )}
+                onClick={() => handleSelectMessage(msg.id)}
+              >
+                <div className="flex items-center gap-1.5 mb-1.5 border-b border-border/40 pb-1">
+                  {msg.role === "user" ? (
+                    <User className="h-3 w-3 text-accent" />
+                  ) : (
+                    <Bot className="h-3 w-3 text-primary" />
+                  )}
+                  <span className="font-mono text-[9px] uppercase font-bold tracking-wider text-muted-foreground">
+                    {msg.role === "user" ? "USER QUERY" : "SYSTEM RESPONSE"}
+                  </span>
                 </div>
+                <div className="whitespace-pre-wrap font-medium">{msg.content}</div>
 
-                {/* Search Results Grid for this turn */}
+                {/* Dynamic tag indicating query results */}
                 {msg.results && msg.results.length > 0 && (
-                  <div className="pl-11 pr-4">
-                    <div className="bg-card/30 border border-border rounded-xl p-4 space-y-3 shadow-inner">
-                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold flex items-center gap-1">
-                        <Maximize2 className="h-3 w-3 text-primary" />
-                        Matched Video Indexes ({msg.results.length})
-                      </div>
-                      <SearchResults
-                        results={msg.results}
-                        activeQuery={msg.content}
-                        onAnalyse={onAnalyseFrame}
-                      />
-                    </div>
+                  <div className="mt-2.5 flex items-center justify-between gap-2 bg-primary/5 border border-primary/20 rounded p-1.5">
+                    <span className="font-mono text-[9px] font-bold text-primary uppercase tracking-wide">
+                      {msg.results.length} Matches Found
+                    </span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveMessageId(msg.id);
+                      }}
+                      className={cn(
+                        "font-mono text-[8px] font-bold uppercase px-1.5 py-0.5 rounded cursor-pointer transition-colors",
+                        activeMsg?.id === msg.id 
+                          ? "bg-primary text-primary-foreground" 
+                          : "bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      {activeMsg?.id === msg.id ? "Inspecting" : "Inspect"}
+                    </button>
+                  </div>
+                )}
+
+                {msg.role === "assistant" && msg.isStreaming && (
+                  <div className="flex items-center gap-1.5 mt-2">
+                    <Loader2 className="h-3 w-3 animate-spin text-primary" />
+                    <span className="text-[9px] text-muted-foreground italic font-semibold">
+                      Ingesting indices...
+                    </span>
                   </div>
                 )}
               </div>
@@ -759,15 +811,12 @@ export default function ChatInterface({ onAnalyseFrame }: ChatInterfaceProps) {
 
         {/* Suggestion Pills */}
         {suggestions.length > 0 && (
-          <div className="px-5 py-2 flex flex-wrap gap-2 text-[10px] border-t border-border/40 bg-card/10 z-10">
-            <span className="text-muted-foreground flex items-center gap-0.5 font-bold">
-              Follow-up: <ChevronRight className="h-3 w-3 text-primary" />
-            </span>
+          <div className="px-4 py-2.5 flex flex-wrap gap-1.5 text-[9px] border-t border-border/40 bg-card/15 shrink-0">
             {suggestions.map((sug, idx) => (
               <button
                 key={idx}
                 onClick={() => sendMessage(sug)}
-                className="px-2.5 py-1 rounded-full bg-muted border border-border hover:border-primary/40 text-muted-foreground hover:text-primary transition-all cursor-pointer font-medium"
+                className="px-2 py-0.5 rounded bg-muted border border-border/80 hover:border-primary/40 text-muted-foreground hover:text-primary transition-all cursor-pointer font-medium"
               >
                 {sug}
               </button>
@@ -777,23 +826,22 @@ export default function ChatInterface({ onAnalyseFrame }: ChatInterfaceProps) {
 
         {/* Active video indicator */}
         {activeVideo && (
-          <div className="px-5 py-2.5 bg-muted/40 border-t border-border flex items-center justify-between text-xs z-10 animate-fade-in">
-            <div className="flex items-center gap-2 text-foreground font-semibold">
-              <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+          <div className="px-4 py-2 bg-muted/50 border-t border-border flex items-center justify-between text-[10px] shrink-0 animate-fade-in">
+            <div className="flex items-center gap-1.5 text-foreground font-semibold">
+              <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
               <span>Active uploaded video: <span className="font-mono text-primary">{activeVideo.filename}</span></span>
             </div>
             <button
               onClick={() => setActiveVideo(null)}
-              className="text-muted-foreground hover:text-destructive p-1 rounded hover:bg-muted cursor-pointer transition-colors"
+              className="text-muted-foreground hover:text-destructive p-0.5 rounded cursor-pointer"
             >
-              <X className="h-4 w-4" />
+              <X className="h-3.5 w-3.5" />
             </button>
           </div>
         )}
 
         {/* Input Controls Bar */}
-        <div className="p-4 border-t border-border bg-card/50 flex items-center gap-2 z-10">
-          {/* File Upload Input */}
+        <div className="p-3 border-t border-border bg-card/60 flex items-center gap-2 shrink-0">
           <input
             type="file"
             accept="video/*"
@@ -806,16 +854,15 @@ export default function ChatInterface({ onAnalyseFrame }: ChatInterfaceProps) {
             size="icon"
             disabled={isUploading}
             onClick={() => fileInputRef.current?.click()}
-            className="h-10 w-10 shrink-0 text-foreground cursor-pointer rounded-xl hover:border-primary/40 transition-all"
+            className="h-9 w-9 shrink-0 text-foreground cursor-pointer rounded-xl hover:border-primary/40 transition-all"
           >
             {isUploading ? (
-              <Loader2 className="h-4 w-4 animate-spin text-primary" />
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
             ) : (
-              <Plus className="h-4 w-4" />
+              <Plus className="h-3.5 w-3.5" />
             )}
           </Button>
 
-          {/* Voice input */}
           <VoiceInput
             onTranscript={handleVoiceTranscript}
             disabled={!isMockMode && (isWsConnecting || socketRef.current?.readyState !== WebSocket.OPEN)}
@@ -826,140 +873,226 @@ export default function ChatInterface({ onAnalyseFrame }: ChatInterfaceProps) {
               e.preventDefault();
               sendMessage(inputText);
             }}
-            className="flex-1 flex gap-2"
+            className="flex-1 flex gap-1.5"
           >
             <input
               type="text"
               placeholder={
                 isMockMode
-                  ? "Chatting in local mock mode (API offline)..."
+                  ? "Chatting in local mock mode..."
                   : isWsConnecting
                   ? "Connecting to chat..."
                   : socketRef.current?.readyState !== WebSocket.OPEN
                   ? "Chat offline, reconnecting..."
-                  : "Refine query: 'now show only white ones', 'alert me if this happens'..."
+                  : "Refine query: 'show red vehicles'..."
               }
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               disabled={!isMockMode && (isWsConnecting || socketRef.current?.readyState !== WebSocket.OPEN)}
-              className="flex-1 h-10 bg-background border border-border hover:border-primary/40 focus:border-primary/80 focus:ring-1 focus:ring-primary rounded-xl px-4 text-xs font-semibold text-foreground transition-all placeholder:text-muted-foreground disabled:opacity-50"
+              className="flex-1 h-9 bg-background border border-border hover:border-primary/40 focus:border-primary/80 focus:ring-1 focus:ring-primary rounded-xl px-3 text-[11px] font-semibold text-foreground transition-all placeholder:text-muted-foreground/60 disabled:opacity-50"
             />
             <Button
               type="submit"
               disabled={!inputText.trim() || (!isMockMode && (isWsConnecting || socketRef.current?.readyState !== WebSocket.OPEN))}
-              className="h-10 px-4 rounded-xl bg-primary hover:bg-primary/95 text-primary-foreground font-bold shadow-md cursor-pointer flex items-center gap-1.5"
+              size="icon"
+              className="h-9 w-9 shrink-0 rounded-xl bg-primary hover:bg-primary/95 text-primary-foreground font-bold shadow-md cursor-pointer flex items-center justify-center"
+              title="Send message"
             >
               <Send className="h-3.5 w-3.5" />
-              Send
             </Button>
           </form>
         </div>
       </div>
 
-      {/* Right Column: NLU State Drawer */}
-      <div className="space-y-6">
-        <div className="glass rounded-xl p-5 border border-border shadow-lg space-y-4 h-[75vh] overflow-y-auto bg-card/20">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 border-b border-border pb-3">
-            <Sparkles className="h-3.5 w-3.5 text-primary" />
-            NLU Intent Deconstruction
-          </h2>
+      {/* COLUMN 2: CENTER - Results (Flexible width) */}
+      <div className="w-full lg:flex-1 min-w-0 flex flex-col border border-border/80 rounded-2xl overflow-hidden bg-card/10 backdrop-blur-sm h-full">
+        {/* Center Header */}
+        <div className="px-5 py-3 border-b border-border bg-card/45 flex justify-between items-center shrink-0">
+          <div className="flex items-center gap-2">
+            <Target className="h-4 w-4 text-accent animate-pulse" />
+            <span className="font-mono text-xs font-bold text-foreground uppercase tracking-wider">
+              Visual Search Index Matches
+            </span>
+          </div>
+          {activeMsg?.results && activeMsg.results.length > 0 && (
+            <Badge className="bg-accent/15 border-accent/30 text-accent text-[9px] font-bold py-0.5 px-2">
+              {activeMsg.results.length} Matches
+            </Badge>
+          )}
+        </div>
 
-          {messages.length > 0 && messages[messages.length - 1]?.intent ? (
+        {/* Results Body */}
+        <div className="flex-1 overflow-y-auto p-4">
+          {activeMsg?.results && activeMsg.results.length > 0 ? (
             <div className="space-y-4">
-              {/* Intent Info list */}
-              {(() => {
-                const activeIntent = messages[messages.length - 1].intent;
-                return (
-                  <div className="space-y-3 text-xs">
-                    <div className="flex justify-between items-center gap-2 border-b border-border/40 pb-2">
-                      <span className="text-muted-foreground">Intent Type</span>
-                      <Badge variant="outline" className="text-[9px] border-primary/20 text-primary uppercase font-bold py-0">
-                        {activeIntent.intent_type || "N/A"}
-                      </Badge>
-                    </div>
+              <SearchResults
+                results={activeMsg.results}
+                activeQuery={activeMsg.content}
+                onAnalyse={onAnalyseFrame}
+              />
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full text-center max-w-sm mx-auto space-y-4">
+              <div className="h-12 w-12 rounded-2xl bg-accent/5 flex items-center justify-center border border-accent/10 cyber-grid relative">
+                <span className="h-2 w-2 rounded-full bg-accent animate-ping absolute" />
+                <span className="h-1.5 w-1.5 rounded-full bg-accent absolute" />
+              </div>
+              <h3 className="font-mono text-xs font-bold uppercase tracking-wider text-foreground">Awaiting Query Execution</h3>
+              <p className="text-[10px] text-muted-foreground/80 leading-relaxed">
+                Submit a text query in the visual assistant panel to search indexing databases. Matching surveillance frames will display here.
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
 
-                    <div className="flex justify-between items-center gap-2 border-b border-border/40 pb-2">
-                      <span className="text-muted-foreground">Class Target</span>
-                      <span className="font-mono bg-muted px-1.5 py-0.5 rounded text-[10px] text-foreground font-bold">
-                        {activeIntent.object_class || "N/A"}
-                      </span>
-                    </div>
+      {/* COLUMN 3: RIGHT - AI Reasoning (25% width) */}
+      <div className="w-full lg:w-[25%] shrink-0 flex flex-col border border-border/80 rounded-2xl overflow-hidden bg-card/25 backdrop-blur-sm h-full">
+        {/* Right Header */}
+        <div className="px-5 py-3 border-b border-border bg-card/45 flex items-center gap-2 shrink-0">
+          <Sparkles className="h-4 w-4 text-primary animate-pulse" />
+          <span className="font-mono text-xs font-bold text-foreground uppercase tracking-wider">
+            NLU Intent Deconstruction
+          </span>
+        </div>
 
-                    <div className="flex justify-between items-center gap-2 border-b border-border/40 pb-2">
-                      <span className="text-muted-foreground">Color Hex</span>
-                      {activeIntent.color ? (
-                        <span className="flex items-center gap-1 font-semibold text-foreground">
-                          <span
-                            style={{
-                              backgroundColor:
-                                activeIntent.color === "white"
-                                  ? "#ffffff"
-                                  : activeIntent.color === "black"
-                                  ? "#111111"
-                                  : activeIntent.color === "red"
-                                  ? "#ef4444"
-                                  : activeIntent.color === "blue"
-                                  ? "#3b82f6"
-                                  : activeIntent.color === "yellow"
-                                  ? "#eab308"
-                                  : "#76b900",
-                            }}
-                            className="h-2.5 w-2.5 rounded-full border border-border"
-                          />
-                          {activeIntent.color}
-                        </span>
+        {/* Right Body */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-5">
+          {activeMsg?.intent ? (
+            <div className="space-y-5">
+              {/* Query Breakdown */}
+              <div className="space-y-2.5">
+                <span className="text-[9px] text-muted-foreground uppercase font-bold tracking-wider">Query Scope</span>
+                <div className="space-y-2 text-[10px]">
+                  <div className="flex justify-between items-center gap-2 border-b border-border/40 pb-1.5">
+                    <span className="text-muted-foreground">Intent Type</span>
+                    <Badge variant="outline" className="text-[8px] border-primary/20 text-primary uppercase font-bold py-0">
+                      {activeMsg.intent.intent_type || "N/A"}
+                    </Badge>
+                  </div>
+
+                  <div className="flex justify-between items-center gap-2 border-b border-border/40 pb-1.5">
+                    <span className="text-muted-foreground">Class Target</span>
+                    <span className="font-mono bg-muted border border-border px-1.5 py-0.5 rounded text-[9px] text-foreground font-bold">
+                      {activeMsg.intent.object_class || "N/A"}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between items-center gap-2 border-b border-border/40 pb-1.5">
+                    <span className="text-muted-foreground">Attribute Filter</span>
+                    <span className="font-mono text-[9px] text-foreground font-bold">
+                      {activeMsg.intent.color || activeMsg.intent.attributes?.clothing || activeMsg.intent.attributes?.carrying || "None"}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between items-start gap-2 border-b border-border/40 pb-1.5">
+                    <span className="text-muted-foreground">Locked Cameras</span>
+                    <div className="flex flex-wrap gap-1 justify-end max-w-[120px]">
+                      {activeMsg.intent.camera_ids && activeMsg.intent.camera_ids.length > 0 ? (
+                        activeMsg.intent.camera_ids.map((cid: string) => (
+                          <Badge key={cid} variant="secondary" className="text-[8px] px-1 py-0 border-border">
+                            {cid.replace("cam-", "")}
+                          </Badge>
+                        ))
                       ) : (
-                        <span className="text-muted-foreground">None</span>
+                        <span className="text-muted-foreground">All Feeds</span>
                       )}
                     </div>
+                  </div>
 
-                    <div className="flex justify-between items-start gap-2 border-b border-border/40 pb-2">
-                      <span className="text-muted-foreground">Locked Cameras</span>
-                      <div className="flex flex-wrap gap-1 justify-end max-w-[150px]">
-                        {activeIntent.camera_ids && activeIntent.camera_ids.length > 0 ? (
-                          activeIntent.camera_ids.map((cid: string) => (
-                            <Badge key={cid} variant="secondary" className="text-[9px] px-1.5 py-0 border-border">
-                              {cid.replace("cam-", "")}
-                            </Badge>
-                          ))
-                        ) : (
-                          <span className="text-muted-foreground">All Feeds</span>
-                        )}
+                  <div className="flex justify-between items-start gap-2 border-b border-border/40 pb-1.5">
+                    <span className="text-muted-foreground">Time Range</span>
+                    <span className="text-right font-medium text-foreground">
+                      {activeMsg.intent.time_range?.description || "All indices"}
+                    </span>
+                  </div>
+
+                  <div className="flex flex-col gap-1 pt-1">
+                    <span className="text-[8px] text-muted-foreground uppercase font-bold tracking-wider">
+                      Translated Prompt Expansion
+                    </span>
+                    <div className="bg-background/95 border border-border rounded-lg p-2 font-mono text-[8px] text-foreground leading-relaxed break-all">
+                      {activeMsg.intent.rewritten_query || activeMsg.intent.raw_query || "N/A"}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Detected Entities */}
+              {detectedEntities.length > 0 && (
+                <div className="space-y-2 border-t border-border/30 pt-4">
+                  <span className="text-[9px] text-muted-foreground uppercase font-bold tracking-wider">Detected Entities</span>
+                  <div className="grid grid-cols-2 gap-2">
+                    {detectedEntities.map((ent) => (
+                      <div key={ent.label} className="bg-background/55 border border-border/40 rounded-lg p-2 flex items-center justify-between gap-2">
+                        <span className="font-mono text-[9px] font-bold text-foreground capitalize truncate">{ent.label}</span>
+                        <Badge variant="secondary" className="text-[8px] font-bold py-0 px-1 bg-accent/10 border-accent/20 text-accent">
+                          {ent.count}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Confidence Score Indicators */}
+              {activeMsg.results && activeMsg.results.length > 0 && (
+                <div className="space-y-3 border-t border-border/30 pt-4">
+                  <span className="text-[9px] text-muted-foreground uppercase font-bold tracking-wider">AI Accuracy Metrics</span>
+                  <div className="space-y-2 text-[10px]">
+                    <div className="space-y-1">
+                      <div className="flex justify-between font-semibold">
+                        <span className="text-muted-foreground">Max Similarity Score</span>
+                        <span className="text-primary font-bold">{(confidenceStats.max * 100).toFixed(0)}%</span>
+                      </div>
+                      <div className="h-1.5 w-full bg-border/40 rounded-full overflow-hidden">
+                        <div className="h-full bg-primary rounded-full" style={{ width: `${confidenceStats.max * 100}%` }} />
                       </div>
                     </div>
-
-                    <div className="flex justify-between items-start gap-2 border-b border-border/40 pb-2">
-                      <span className="text-muted-foreground">Time Scope</span>
-                      <span className="text-right font-medium text-foreground">
-                        {activeIntent.time_range?.description || "All indices"}
-                      </span>
-                    </div>
-
-                    <div className="flex justify-between items-start gap-2 border-b border-border/40 pb-2">
-                      <span className="text-muted-foreground text-destructive">Exclusions</span>
-                      <span className="text-right font-mono text-destructive font-bold text-[10px]">
-                        {activeIntent.negations && activeIntent.negations.length > 0
-                          ? activeIntent.negations.join(", ")
-                          : "None"}
-                      </span>
-                    </div>
-
-                    <div className="flex flex-col gap-1.5 pt-1">
-                      <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
-                        Prompt Expansion
-                      </span>
-                      <div className="bg-background border border-border rounded-lg p-2.5 font-mono text-[9px] text-foreground leading-relaxed break-all">
-                        {activeIntent.rewritten_query || activeIntent.raw_query}
+                    <div className="space-y-1">
+                      <div className="flex justify-between font-semibold">
+                        <span className="text-muted-foreground">Average Score</span>
+                        <span className="text-accent font-bold">{(confidenceStats.avg * 100).toFixed(0)}%</span>
+                      </div>
+                      <div className="h-1.5 w-full bg-border/40 rounded-full overflow-hidden">
+                        <div className="h-full bg-accent rounded-full" style={{ width: `${confidenceStats.avg * 100}%` }} />
                       </div>
                     </div>
                   </div>
-                );
-              })()}
+                </div>
+              )}
+
+              {/* Timeline Matches */}
+              {activeMsg.results && activeMsg.results.length > 0 && (
+                <div className="space-y-2 border-t border-border/30 pt-4">
+                  <span className="text-[9px] text-muted-foreground uppercase font-bold tracking-wider flex items-center gap-1">
+                    <Clock className="h-3 w-3 text-accent" />
+                    Timeline Matches
+                  </span>
+                  <div className="space-y-1.5 max-h-[160px] overflow-y-auto pr-1">
+                    {activeMsg.results.map((res) => (
+                      <div 
+                        key={res.id} 
+                        onClick={() => onAnalyseFrame(res)}
+                        className="flex items-center justify-between gap-2 border border-border/40 hover:border-accent/40 bg-background/40 hover:bg-accent/[0.02] p-2 rounded-lg cursor-pointer transition-all"
+                      >
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-[9px] font-bold text-foreground truncate">{res.camera_id}</span>
+                          <span className="text-[8px] text-muted-foreground/60 font-mono">Frame #{res.frame_number}</span>
+                        </div>
+                        <Badge variant="outline" className="text-[8px] font-mono border-accent/25 text-accent font-bold py-0.5 px-1.5 shrink-0 bg-accent/[0.01]">
+                          {formatVideoTime(res.timestamp_ms)}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
-            <div className="text-center py-12 text-xs text-muted-foreground flex flex-col items-center justify-center gap-2">
-              <Clock className="h-6 w-6 text-muted-foreground/45" />
-              <span>Pipeline outputs will display as you chat.</span>
+            <div className="text-center py-12 text-xs text-muted-foreground flex flex-col items-center justify-center gap-2 h-full">
+              <Clock className="h-6 w-6 text-muted-foreground/30" />
+              <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground/50">Awaiting NLU extraction</span>
             </div>
           )}
         </div>

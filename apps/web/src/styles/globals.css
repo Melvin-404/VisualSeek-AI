@@ -1,32 +1,32 @@
 @import "tailwindcss";
 
 @theme {
-  /* NVIDIA-inspired dark palette */
-  --color-background: #0a0a0a;
-  --color-foreground: #e5e5e5;
-  --color-card: #121212;
-  --color-card-foreground: #e5e5e5;
-  --color-popover: #121212;
-  --color-popover-foreground: #e5e5e5;
-  --color-primary: #76b900;
-  --color-primary-foreground: #0a0a0a;
-  --color-secondary: #1a1a2e;
-  --color-secondary-foreground: #e5e5e5;
-  --color-muted: #1a1a1a;
-  --color-muted-foreground: #a3a3a3;
-  --color-accent: #76b900;
-  --color-accent-foreground: #0a0a0a;
+  /* Futuristic Dark AI Command Center Palette */
+  --color-background: #080a0f;
+  --color-foreground: #f1f5f9;
+  --color-card: #0d111a;
+  --color-card-foreground: #f1f5f9;
+  --color-popover: #0d111a;
+  --color-popover-foreground: #f1f5f9;
+  --color-primary: #00ff66; /* Neon AI Green */
+  --color-primary-foreground: #080a0f;
+  --color-secondary: #0052ff; /* Cyber Blue */
+  --color-secondary-foreground: #f1f5f9;
+  --color-muted: #131a26;
+  --color-muted-foreground: #94a3b8;
+  --color-accent: #00f0ff; /* Electric Cyan */
+  --color-accent-foreground: #080a0f;
   --color-destructive: #ef4444;
   --color-destructive-foreground: #fafafa;
-  --color-border: #262626;
-  --color-input: #262626;
-  --color-ring: #76b900;
-  --color-sidebar: #0f0f0f;
-  --color-sidebar-foreground: #a3a3a3;
-  --color-sidebar-active: #76b900;
-  --color-success: #22c55e;
+  --color-border: #1e293b;
+  --color-input: #131a26;
+  --color-ring: #00ff66;
+  --color-sidebar: #05070a;
+  --color-sidebar-foreground: #94a3b8;
+  --color-sidebar-active: #00ff66;
+  --color-success: #00ff66;
   --color-warning: #eab308;
-  --color-info: #3b82f6;
+  --color-info: #00f0ff;
 
   --radius-sm: 0.25rem;
   --radius-md: 0.375rem;
@@ -90,13 +90,51 @@
   }
 
   .gpu-glow {
-    box-shadow: 0 0 20px rgba(118, 185, 0, 0.15),
-      0 0 40px rgba(118, 185, 0, 0.05);
+    box-shadow: 0 0 20px rgba(0, 255, 102, 0.15),
+      0 0 40px rgba(0, 255, 102, 0.05);
+  }
+
+  .gpu-glow-blue {
+    box-shadow: 0 0 20px rgba(0, 82, 255, 0.15),
+      0 0 40px rgba(0, 82, 255, 0.05);
+  }
+
+  .gpu-glow-cyan {
+    box-shadow: 0 0 20px rgba(0, 240, 255, 0.15),
+      0 0 40px rgba(0, 240, 255, 0.05);
   }
 
   .glass {
-    background: rgba(18, 18, 18, 0.8);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(118, 185, 0, 0.1);
+    background: rgba(13, 17, 26, 0.75);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(0, 240, 255, 0.1);
+  }
+
+  .glass-hover {
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  }
+  .glass-hover:hover {
+    background: rgba(13, 17, 26, 0.85);
+    border-color: rgba(0, 255, 102, 0.25);
+    box-shadow: 0 8px 32px 0 rgba(0, 255, 102, 0.05);
+  }
+
+  .cyber-grid {
+    background-image: 
+      linear-gradient(rgba(0, 240, 255, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 240, 255, 0.03) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+
+  .scanline::after {
+    content: " ";
+    display: block;
+    position: absolute;
+    top: 0; left: 0; bottom: 0; right: 0;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 255, 102, 0.08) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+    z-index: 2;
+    background-size: 100% 4px, 6px 100%;
+    pointer-events: none;
+    opacity: 0.45;
   }
 }

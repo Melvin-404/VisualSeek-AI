@@ -141,20 +141,29 @@ export function TrendChart() {
     : [];
 
   return (
-    <div className="rounded-xl border border-border bg-card p-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border pb-4 mb-6">
+    <div
+      className="rounded-xl border border-border/80 bg-card/45 glass p-6 select-none relative"
+      data-cursor="explore"
+    >
+      {/* HUD Tech Corner Elements */}
+      <div className="absolute top-1.5 left-1.5 w-1.5 h-1.5 border-t border-l border-muted-foreground/30" />
+      <div className="absolute top-1.5 right-1.5 w-1.5 h-1.5 border-t border-r border-muted-foreground/30" />
+      <div className="absolute bottom-1.5 left-1.5 w-1.5 h-1.5 border-b border-l border-muted-foreground/30" />
+      <div className="absolute bottom-1.5 right-1.5 w-1.5 h-1.5 border-b border-r border-muted-foreground/30" />
+
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border/40 pb-4 mb-6">
         <div>
-          <h3 className="text-base font-bold text-foreground">Historical Trend Analysis</h3>
-          <p className="text-xs text-muted-foreground">
+          <h3 className="text-sm font-bold uppercase tracking-wider text-foreground">Historical Trend Analysis</h3>
+          <p className="text-[10px] font-medium text-muted-foreground/80">
             90-day object counts and alert distribution overview
           </p>
         </div>
-        <div className="flex rounded-lg bg-muted p-1 self-start sm:self-auto">
+        <div className="flex rounded-lg bg-muted/50 p-1 self-start sm:self-auto border border-border/40">
           <button
             onClick={() => setActiveTab("objects")}
-            className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-semibold transition-all ${
+            className={`flex items-center gap-1.5 rounded px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-all ${
               activeTab === "objects"
-                ? "bg-card text-foreground shadow"
+                ? "bg-card text-primary shadow"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
@@ -163,9 +172,9 @@ export function TrendChart() {
           </button>
           <button
             onClick={() => setActiveTab("events")}
-            className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-semibold transition-all ${
+            className={`flex items-center gap-1.5 rounded px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-all ${
               activeTab === "events"
-                ? "bg-card text-foreground shadow"
+                ? "bg-card text-primary shadow"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
@@ -181,40 +190,44 @@ export function TrendChart() {
             <AreaChart data={trends} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <defs>
                 <linearGradient id="colorPeople" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#76b900" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#76b900" stopOpacity={0.0} />
+                  <stop offset="5%" stopColor="#00ff66" stopOpacity={0.25} />
+                  <stop offset="95%" stopColor="#00ff66" stopOpacity={0.0} />
                 </linearGradient>
                 <linearGradient id="colorVehicles" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.0} />
+                  <stop offset="5%" stopColor="#0052ff" stopOpacity={0.25} />
+                  <stop offset="95%" stopColor="#0052ff" stopOpacity={0.0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#262626" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#131a26" />
               <XAxis
                 dataKey="date"
-                stroke="#a3a3a3"
-                fontSize={10}
+                stroke="#94a3b8"
+                fontSize={9}
                 tickLine={false}
                 tickFormatter={(str) => {
                   const parts = str.split("-");
                   return parts.length === 3 ? `${parts[1]}/${parts[2]}` : str;
                 }}
               />
-              <YAxis stroke="#a3a3a3" fontSize={10} tickLine={false} />
+              <YAxis stroke="#94a3b8" fontSize={9} tickLine={false} />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: "#121212",
-                  borderColor: "#262626",
-                  borderRadius: "8px",
-                  color: "#e5e5e5"
+                  backgroundColor: "rgba(13, 17, 26, 0.92)",
+                  borderColor: "rgba(0, 240, 255, 0.2)",
+                  borderRadius: "12px",
+                  color: "#f1f5f9",
+                  fontSize: "10px",
+                  fontFamily: "var(--font-mono)",
+                  backdropFilter: "blur(8px)",
+                  boxShadow: "0 4px 20px rgba(0, 240, 255, 0.05)"
                 }}
               />
-              <Legend verticalAlign="top" height={36} iconType="circle" />
+              <Legend verticalAlign="top" height={36} iconType="circle" wrapperStyle={{ fontSize: "10px" }} />
               <Area
                 type="monotone"
                 dataKey="people"
                 name="People Count"
-                stroke="#76b900"
+                stroke="#00ff66"
                 strokeWidth={2}
                 fillOpacity={1}
                 fill="url(#colorPeople)"
@@ -223,7 +236,7 @@ export function TrendChart() {
                 type="monotone"
                 dataKey="vehicles"
                 name="Vehicle Count"
-                stroke="#3b82f6"
+                stroke="#0052ff"
                 strokeWidth={2}
                 fillOpacity={1}
                 fill="url(#colorVehicles)"
@@ -235,17 +248,20 @@ export function TrendChart() {
         <div className="h-[320px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={severityChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#262626" />
-              <XAxis dataKey="name" stroke="#a3a3a3" fontSize={10} tickLine={false} />
-              <YAxis stroke="#a3a3a3" fontSize={10} tickLine={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#131a26" />
+              <XAxis dataKey="name" stroke="#94a3b8" fontSize={9} tickLine={false} />
+              <YAxis stroke="#94a3b8" fontSize={9} tickLine={false} />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: "#121212",
-                  borderColor: "#262626",
-                  borderRadius: "8px",
-                  color: "#e5e5e5"
+                  backgroundColor: "rgba(13, 17, 26, 0.92)",
+                  borderColor: "rgba(0, 240, 255, 0.2)",
+                  borderRadius: "12px",
+                  color: "#f1f5f9",
+                  fontSize: "10px",
+                  fontFamily: "var(--font-mono)",
+                  backdropFilter: "blur(8px)"
                 }}
-                cursor={{ fill: "rgba(255, 255, 255, 0.05)" }}
+                cursor={{ fill: "rgba(0, 240, 255, 0.03)" }}
               />
               <Bar dataKey="count" name="Alert Count" radius={[4, 4, 0, 0]}>
                 {severityChartData.map((entry, index) => (

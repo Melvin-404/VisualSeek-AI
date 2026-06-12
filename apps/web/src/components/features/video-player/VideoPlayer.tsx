@@ -46,8 +46,10 @@ export function VideoPlayer({
   children,
 }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const containerDivRef = React.useRef<HTMLDivElement>(null);
   const [isMuted, setIsMuted] = React.useState(true);
   const [showControlsBar, setShowControlsBar] = React.useState(false);
+  const [shineStyle, setShineStyle] = React.useState<React.CSSProperties>({});
 
   const { cameraNames, setCameraName, seekRequest, clearSeekRequest } = useCameraStore();
   const cameraName = cameraNames[camera.id] || camera.name;
@@ -82,6 +84,41 @@ export function VideoPlayer({
     muted: true,
   });
 
+  const handleMouseMove3D = (e: React.MouseEvent<HTMLDivElement>) => {
+    const el = containerDivRef.current;
+    if (!el || isFullscreen) return;
+
+    const rect = el.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    const xc = rect.width / 2;
+    const yc = rect.height / 2;
+
+    // Maximum tilt 5-8 degrees (using 6 degrees)
+    const maxTilt = 6;
+    const rotateY = -((x - xc) / xc) * maxTilt;
+    const rotateX = ((y - yc) / yc) * maxTilt;
+
+    el.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.02, 1.02, 1.02)`;
+    el.style.transition = "transform 0.05s ease-out";
+
+    // Radial reflection overlay
+    const px = (x / rect.width) * 100;
+    const py = (y / rect.height) * 100;
+    setShineStyle({
+      background: `radial-gradient(circle at ${px}% ${py}%, rgba(255, 255, 255, 0.12) 0%, transparent 60%)`,
+    });
+  };
+
+  const handleMouseLeave3D = () => {
+    const el = containerDivRef.current;
+    if (!el) return;
+    el.style.transform = `perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)`;
+    el.style.transition = "transform 0.5s cubic-bezier(0.25, 0.8, 0.25, 1)";
+    setShineStyle({});
+  };
+
   const handleMouseEnter = () => {
     if (showControls) {
       setShowControlsBar(true);
@@ -90,12 +127,14 @@ export function VideoPlayer({
   };
 
   const handleMouseLeave = () => {
+    handleMouseLeave3D();
     if (showControls) {
       hideTimeoutRef.current = setTimeout(() => setShowControlsBar(false), 2000);
     }
   };
 
-  const handleMouseMove = () => {
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    handleMouseMove3D(e);
     if (showControls) {
       setShowControlsBar(true);
       if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
@@ -116,16 +155,25 @@ export function VideoPlayer({
   if (camera.status === "offline") {
     return (
       <div
+        ref={containerDivRef}
         className={cn(
-          "relative flex aspect-video items-center justify-center rounded-lg border bg-card",
-          isActive ? "border-primary gpu-glow" : "border-border"
+          "relative flex aspect-video items-center justify-center rounded-lg border bg-card/60 backdrop-blur-sm transition-all duration-300 select-none",
+          isActive ? "border-primary gpu-glow-green" : "border-border hover:border-accent/40"
         )}
+        onMouseMove={handleMouseMove3D}
+        onMouseLeave={handleMouseLeave3D}
         onClick={onClick}
+        data-cursor="explore"
       >
+        {/* Shine reflection overlay */}
+        <div 
+          className="pointer-events-none absolute inset-0 z-[3] mix-blend-overlay opacity-0 hover:opacity-100 transition-opacity duration-300"
+          style={shineStyle}
+        />
         <div className="flex flex-col items-center gap-2 text-muted-foreground">
-          <WifiOff className="h-8 w-8" />
-          <span className="text-xs font-medium">No Signal</span>
-          <span className="text-[10px]">{cameraName}</span>
+          <WifiOff className="h-8 w-8 text-muted-foreground/50" />
+          <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">No Signal</span>
+          <span className="text-[10px] font-bold text-foreground/45">{cameraName}</span>
         </div>
       </div>
     );
@@ -133,9 +181,10 @@ export function VideoPlayer({
 
   return (
     <div
+      ref={containerDivRef}
       className={cn(
-        "group relative aspect-video overflow-hidden rounded-lg border bg-black transition-all duration-200",
-        isActive ? "border-primary gpu-glow" : "border-border hover:border-primary/30",
+        "group relative aspect-video overflow-hidden rounded-lg border bg-black transition-all duration-300 ease-out",
+        isActive ? "border-primary gpu-glow-green" : "border-border hover:border-accent/40",
         isFullscreen && "fixed inset-0 z-50 rounded-none border-0"
       )}
       onMouseEnter={handleMouseEnter}
@@ -143,7 +192,14 @@ export function VideoPlayer({
       onMouseMove={handleMouseMove}
       onClick={onClick}
       onDoubleClick={onDoubleClick}
+      data-cursor="inspect"
+      style={{ transformStyle: "preserve-3d" }}
     >
+      {/* Shine reflection overlay */}
+      <div 
+        className="pointer-events-none absolute inset-0 z-[3] mix-blend-overlay opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+        style={shineStyle}
+      />
       {/* Video element */}
       <video
         ref={videoRef}
