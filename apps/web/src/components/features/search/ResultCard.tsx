@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState } from "react";
-import { Play, Clock, Target, Maximize2, Tag, CheckCircle2 } from "lucide-react";
+import { Play, Clock, Maximize2, Tag, CheckCircle2, ShieldAlert } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { useSession } from "next-auth/react";
 
 interface Detection {
   label: string;
@@ -23,6 +24,12 @@ interface SearchResult {
     description: string;
     video_path: string;
   };
+  dominant_colour?: string;
+  vehicle_type?: string;
+  upper_colour?: string;
+  lower_colour?: string;
+  carried_items?: string[];
+  gender_estimate?: string;
 }
 
 interface ResultCardProps {
@@ -40,6 +47,14 @@ const CAMERA_NAMES: Record<string, string> = {
 
 export default function ResultCard({ result, onAnalyse, activeQuery = "" }: ResultCardProps) {
   const [isHovered, setIsHovered] = useState(false);
+  const [imgError, setImgError] = useState(false);
+  const { data: session } = useSession();
+
+  const token = session?.accessToken || "mock-token";
+  
+  // Build the crop endpoint url with token authentication
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+  const cropUrl = `${apiUrl.replace(/\/$/, "")}/api/v1/detections/${result.id}/crop?token=${token}`;
 
   // Formats milliseconds into timeline format (mm:ss)
   const formatVideoTime = (ms: number) => {
@@ -91,29 +106,39 @@ export default function ResultCard({ result, onAnalyse, activeQuery = "" }: Resu
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Bounded Video Preview Frame */}
+      {/* Bounded Video/Image Frame */}
       <div
         className="aspect-video w-full bg-black relative cursor-pointer overflow-hidden"
         onClick={() => onAnalyse(result)}
       >
-        {/* Video Player */}
-        <video
-          src={result.raw_labels.video_path}
-          className="w-full h-full object-cover pointer-events-none"
-          muted
-          playsInline
-          loop
-          ref={(el) => {
-            if (el) {
-              if (isHovered) {
-                el.currentTime = result.timestamp_ms / 1000.0;
-                el.play().catch(() => {});
-              } else {
-                el.pause();
+        {/* Render crop image by default, and video player on hover */}
+        {!isHovered && !imgError ? (
+          <img
+            src={cropUrl}
+            alt={result.raw_labels.description}
+            className="w-full h-full object-cover transition-all duration-350 ease-in-out"
+            onError={() => setImgError(true)}
+            loading="lazy"
+          />
+        ) : (
+          <video
+            src={result.raw_labels.video_path}
+            className="w-full h-full object-cover pointer-events-none"
+            muted
+            playsInline
+            loop
+            ref={(el) => {
+              if (el) {
+                if (isHovered) {
+                  el.currentTime = result.timestamp_ms / 1000.0;
+                  el.play().catch(() => {});
+                } else {
+                  el.pause();
+                }
               }
-            }
-          }}
-        />
+            }}
+          />
+        )}
 
         {/* Frame detection bbox outline static overlay */}
         {result.raw_labels.detections?.map((det, detIdx) => {
@@ -128,7 +153,7 @@ export default function ResultCard({ result, onAnalyse, activeQuery = "" }: Resu
                 width: `${(xmax - xmin) * 100}%`,
                 height: `${(ymax - ymin) * 100}%`,
               }}
-              className="border border-primary/70 pointer-events-none rounded-sm shadow-[0_0_4px_rgba(118,185,0,0.3)]"
+              className="border-2 border-primary/90 pointer-events-none rounded-sm shadow-[0_0_6px_rgba(118,185,0,0.5)] z-10"
             />
           );
         })}
@@ -166,15 +191,40 @@ export default function ResultCard({ result, onAnalyse, activeQuery = "" }: Resu
           {/* Visual Match Explanation Highlighted text */}
           {renderMatchExplanation()}
 
-          {/* Inline Badge Explaining matches */}
-          <div className="flex flex-wrap gap-1.5 pt-1">
+          {/* Mapped attributes badges */}
+          <div className="flex flex-wrap gap-1 pt-1">
             <Badge variant="outline" className="text-[9px] border-primary/30 text-primary bg-primary/5 px-2 py-0">
               <CheckCircle2 className="h-2.5 w-2.5 mr-1 text-primary" />
               Satisfies Class: {result.object_classes.join(", ")}
             </Badge>
-            {result.raw_labels.detections?.[0]?.attributes && (
+            {result.dominant_colour && (
               <Badge variant="outline" className="text-[9px] border-border text-muted-foreground px-2 py-0">
-                Attributes: {Object.values(result.raw_labels.detections[0].attributes).join(", ")}
+                Color: {result.dominant_colour}
+              </Badge>
+            )}
+            {result.vehicle_type && (
+              <Badge variant="outline" className="text-[9px] border-border text-muted-foreground px-2 py-0">
+                Type: {result.vehicle_type}
+              </Badge>
+            )}
+            {result.upper_colour && (
+              <Badge variant="outline" className="text-[9px] border-border text-muted-foreground px-2 py-0">
+                Upper: {result.upper_colour}
+              </Badge>
+            )}
+            {result.lower_colour && (
+              <Badge variant="outline" className="text-[9px] border-border text-muted-foreground px-2 py-0">
+                Lower: {result.lower_colour}
+              </Badge>
+            )}
+            {result.gender_estimate && (
+              <Badge variant="outline" className="text-[9px] border-border text-muted-foreground px-2 py-0">
+                Gender: {result.gender_estimate}
+              </Badge>
+            )}
+            {result.carried_items && result.carried_items.length > 0 && (
+              <Badge variant="outline" className="text-[9px] border-border text-muted-foreground px-2 py-0">
+                Carries: {result.carried_items.join(", ")}
               </Badge>
             )}
           </div>
@@ -183,7 +233,7 @@ export default function ResultCard({ result, onAnalyse, activeQuery = "" }: Resu
         <div className="flex justify-between items-center pt-2 border-t border-border mt-4">
           <span className="text-[10px] text-muted-foreground flex items-center gap-1">
             <Tag className="h-2.5 w-2.5 text-primary" />
-            Segment: {result.segment_id}
+            Segment: {result.segment_id.slice(0, 8)}...
           </span>
           
           <button

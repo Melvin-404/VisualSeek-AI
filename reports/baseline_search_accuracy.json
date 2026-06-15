@@ -1,0 +1,450 @@
+{
+  "colour": {
+    "queries": [
+      {
+        "query": "grey car",
+        "latency_ms": 86.44,
+        "returned_ids": [
+          "mock-parking-2",
+          "mock-dock-2",
+          "mock-parking-4",
+          "mock-parking-3",
+          "mock-parking-1"
+        ],
+        "ground_truth": [
+          "mock-parking-2"
+        ],
+        "p@1": 1.0,
+        "p@5": 0.2,
+        "mrr": 1.0
+      },
+      {
+        "query": "red shirt",
+        "latency_ms": 18.35,
+        "returned_ids": [
+          "mock-parking-4",
+          "mock-lobby-3"
+        ],
+        "ground_truth": [],
+        "p@1": 0.0,
+        "p@5": 0.0,
+        "mrr": 0.0
+      },
+      {
+        "query": "blue vehicle",
+        "latency_ms": 19.69,
+        "returned_ids": [
+          "mock-roadway-2",
+          "mock-dock-1",
+          "mock-parking-2"
+        ],
+        "ground_truth": [
+          "mock-roadway-2",
+          "mock-dock-1"
+        ],
+        "p@1": 1.0,
+        "p@5": 0.4,
+        "mrr": 1.0
+      },
+      {
+        "query": "yellow taxi",
+        "latency_ms": 19.21,
+        "returned_ids": [
+          "mock-roadway-1",
+          "mock-dock-4"
+        ],
+        "ground_truth": [],
+        "p@1": 0.0,
+        "p@5": 0.0,
+        "mrr": 0.0
+      },
+      {
+        "query": "black SUV",
+        "latency_ms": 18.43,
+        "returned_ids": [
+          "mock-parking-3",
+          "mock-parking-1",
+          "mock-lobby-1"
+        ],
+        "ground_truth": [],
+        "p@1": 0.0,
+        "p@5": 0.0,
+        "mrr": 0.0
+      },
+      {
+        "query": "white sedan",
+        "latency_ms": 16.31,
+        "returned_ids": [
+          "mock-parking-3",
+          "mock-parking-1",
+          "mock-roadway-4"
+        ],
+        "ground_truth": [],
+        "p@1": 0.0,
+        "p@5": 0.0,
+        "mrr": 0.0
+      },
+      {
+        "query": "silver automobile",
+        "latency_ms": 19.15,
+        "returned_ids": [
+          "mock-dock-2",
+          "mock-lobby-2"
+        ],
+        "ground_truth": [
+          "mock-dock-2"
+        ],
+        "p@1": 1.0,
+        "p@5": 0.2,
+        "mrr": 1.0
+      },
+      {
+        "query": "green jacket",
+        "latency_ms": 27.98,
+        "returned_ids": [
+          "mock-parking-2"
+        ],
+        "ground_truth": [
+          "mock-parking-2"
+        ],
+        "p@1": 1.0,
+        "p@5": 0.2,
+        "mrr": 1.0
+      },
+      {
+        "query": "orange top",
+        "latency_ms": 16.45,
+        "returned_ids": [
+          "mock-lobby-2"
+        ],
+        "ground_truth": [],
+        "p@1": 0.0,
+        "p@5": 0.0,
+        "mrr": 0.0
+      },
+      {
+        "query": "purple motorcycle",
+        "latency_ms": 31.74,
+        "returned_ids": [
+          "mock-roadway-2"
+        ],
+        "ground_truth": [],
+        "p@1": 0.0,
+        "p@5": 0.0,
+        "mrr": 0.0
+      }
+    ],
+    "metrics": {
+      "precision_at_1": 0.4,
+      "precision_at_5": 0.1,
+      "mean_reciprocal_rank": 0.4,
+      "mean_latency_ms": 27.38
+    }
+  },
+  "attribute": {
+    "queries": [
+      {
+        "query": "person carrying umbrella",
+        "latency_ms": 19.53,
+        "returned_ids": [
+          "mock-lobby-1",
+          "mock-parking-2",
+          "mock-lobby-4",
+          "mock-roadway-3",
+          "mock-lobby-3"
+        ],
+        "ground_truth": [],
+        "p@1": 0.0,
+        "p@5": 0.0,
+        "mrr": 0.0
+      },
+      {
+        "query": "man with backpack",
+        "latency_ms": 17.08,
+        "returned_ids": [
+          "mock-lobby-1",
+          "mock-lobby-3"
+        ],
+        "ground_truth": [
+          "mock-lobby-1"
+        ],
+        "p@1": 1.0,
+        "p@5": 0.2,
+        "mrr": 1.0
+      },
+      {
+        "query": "woman in dress",
+        "latency_ms": 19.52,
+        "returned_ids": [
+          "mock-lobby-3"
+        ],
+        "ground_truth": [
+          "mock-lobby-3"
+        ],
+        "p@1": 1.0,
+        "p@5": 0.2,
+        "mrr": 1.0
+      },
+      {
+        "query": "person in hard hat",
+        "latency_ms": 20.17,
+        "returned_ids": [
+          "mock-roadway-2",
+          "mock-lobby-2",
+          "mock-lobby-1",
+          "mock-lobby-4",
+          "mock-roadway-3"
+        ],
+        "ground_truth": [],
+        "p@1": 0.0,
+        "p@5": 0.0,
+        "mrr": 0.0
+      },
+      {
+        "query": "receptionist with laptop",
+        "latency_ms": 22.07,
+        "returned_ids": [
+          "mock-lobby-2"
+        ],
+        "ground_truth": [
+          "mock-lobby-2"
+        ],
+        "p@1": 1.0,
+        "p@5": 0.2,
+        "mrr": 1.0
+      },
+      {
+        "query": "person holding phone",
+        "latency_ms": 23.05,
+        "returned_ids": [
+          "mock-lobby-4",
+          "mock-lobby-3",
+          "mock-lobby-2",
+          "mock-dock-4",
+          "mock-parking-2"
+        ],
+        "ground_truth": [
+          "mock-lobby-3"
+        ],
+        "p@1": 0.0,
+        "p@5": 0.2,
+        "mrr": 0.5
+      },
+      {
+        "query": "security guard with cup",
+        "latency_ms": 15.93,
+        "returned_ids": [
+          "mock-lobby-4",
+          "mock-dock-2"
+        ],
+        "ground_truth": [
+          "mock-lobby-4"
+        ],
+        "p@1": 1.0,
+        "p@5": 0.2,
+        "mrr": 1.0
+      },
+      {
+        "query": "rider with helmet",
+        "latency_ms": 17.84,
+        "returned_ids": [
+          "mock-roadway-2"
+        ],
+        "ground_truth": [
+          "mock-roadway-2"
+        ],
+        "p@1": 1.0,
+        "p@5": 0.2,
+        "mrr": 1.0
+      },
+      {
+        "query": "person in safety vest",
+        "latency_ms": 18.31,
+        "returned_ids": [
+          "mock-lobby-3",
+          "mock-lobby-1",
+          "mock-lobby-2",
+          "mock-roadway-2",
+          "mock-parking-2"
+        ],
+        "ground_truth": [
+          "mock-dock-4"
+        ],
+        "p@1": 0.0,
+        "p@5": 0.0,
+        "mrr": 0.0
+      },
+      {
+        "query": "worker operating forklift",
+        "latency_ms": 18.99,
+        "returned_ids": [
+          "mock-dock-4"
+        ],
+        "ground_truth": [
+          "mock-dock-4"
+        ],
+        "p@1": 1.0,
+        "p@5": 0.2,
+        "mrr": 1.0
+      }
+    ],
+    "metrics": {
+      "precision_at_1": 0.6,
+      "precision_at_5": 0.14,
+      "mean_reciprocal_rank": 0.65,
+      "mean_latency_ms": 19.25
+    }
+  },
+  "temporal_cross_camera": {
+    "queries": [
+      {
+        "query": "same person seen near Parking Lot A and later near lobby",
+        "latency_ms": 17.95,
+        "returned_ids": [
+          "mock-lobby-1",
+          "mock-parking-2",
+          "mock-lobby-4",
+          "mock-dock-4",
+          "mock-lobby-2"
+        ],
+        "ground_truth": [],
+        "p@1": 0.0,
+        "p@5": 0.0,
+        "mrr": 0.0
+      },
+      {
+        "query": "vehicles that appeared between 6 PM and 8 PM",
+        "latency_ms": 15.93,
+        "returned_ids": [
+          "mock-parking-2"
+        ],
+        "ground_truth": [],
+        "p@1": 0.0,
+        "p@5": 0.0,
+        "mrr": 0.0
+      },
+      {
+        "query": "same car spotted across three cameras",
+        "latency_ms": 16.41,
+        "returned_ids": [
+          "mock-parking-3",
+          "mock-parking-1",
+          "mock-roadway-1",
+          "mock-dock-2",
+          "mock-parking-2"
+        ],
+        "ground_truth": [],
+        "p@1": 0.0,
+        "p@5": 0.0,
+        "mrr": 0.0
+      },
+      {
+        "query": "person who entered lobby between 10 AM and 11 AM",
+        "latency_ms": 18.85,
+        "returned_ids": [
+          "mock-parking-2",
+          "mock-lobby-4",
+          "mock-lobby-3",
+          "mock-lobby-2",
+          "mock-roadway-2"
+        ],
+        "ground_truth": [],
+        "p@1": 0.0,
+        "p@5": 0.0,
+        "mrr": 0.0
+      },
+      {
+        "query": "track the delivery rider trajectory",
+        "latency_ms": 19.9,
+        "returned_ids": [
+          "mock-roadway-2",
+          "mock-dock-3",
+          "mock-lobby-4",
+          "mock-roadway-4",
+          "mock-parking-1"
+        ],
+        "ground_truth": [],
+        "p@1": 0.0,
+        "p@5": 0.0,
+        "mrr": 0.0
+      },
+      {
+        "query": "long dwell times at loading dock",
+        "latency_ms": 22.7,
+        "returned_ids": [
+          "mock-dock-3",
+          "mock-dock-4",
+          "mock-dock-1",
+          "mock-dock-2"
+        ],
+        "ground_truth": [],
+        "p@1": 0.0,
+        "p@5": 0.0,
+        "mrr": 0.0
+      },
+      {
+        "query": "vehicles seen in parking lot after 10 PM",
+        "latency_ms": 20.02,
+        "returned_ids": [
+          "mock-parking-2",
+          "mock-parking-4",
+          "mock-parking-1",
+          "mock-parking-3"
+        ],
+        "ground_truth": [],
+        "p@1": 0.0,
+        "p@5": 0.0,
+        "mrr": 0.0
+      },
+      {
+        "query": "same individual seen near lobby and loading dock",
+        "latency_ms": 17.9,
+        "returned_ids": [
+          "mock-dock-4",
+          "mock-dock-3",
+          "mock-dock-2",
+          "mock-lobby-4",
+          "mock-lobby-3"
+        ],
+        "ground_truth": [],
+        "p@1": 0.0,
+        "p@5": 0.0,
+        "mrr": 0.0
+      },
+      {
+        "query": "dwell time of forklift near bay 2",
+        "latency_ms": 18.19,
+        "returned_ids": [
+          "mock-dock-4",
+          "mock-dock-3",
+          "mock-dock-2",
+          "mock-lobby-4"
+        ],
+        "ground_truth": [],
+        "p@1": 0.0,
+        "p@5": 0.0,
+        "mrr": 0.0
+      },
+      {
+        "query": "vehicles entering parking lot between 12 PM and 2 PM",
+        "latency_ms": 17.16,
+        "returned_ids": [
+          "mock-parking-2",
+          "mock-parking-4",
+          "mock-parking-1",
+          "mock-parking-3"
+        ],
+        "ground_truth": [],
+        "p@1": 0.0,
+        "p@5": 0.0,
+        "mrr": 0.0
+      }
+    ],
+    "metrics": {
+      "precision_at_1": 0.0,
+      "precision_at_5": 0.0,
+      "mean_reciprocal_rank": 0.0,
+      "mean_latency_ms": 18.5
+    }
+  }
+}

@@ -5,6 +5,8 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID, ARRAY
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, TimestampMixin, EncryptedString
+from pgvector.sqlalchemy import Vector
+
 
 
 class Organization(Base, TimestampMixin):
@@ -153,6 +155,27 @@ class VideoSegment(Base, TimestampMixin):
     processing_status: Mapped[str] = mapped_column(sa.String(50), default="pending", server_default="pending", nullable=False)
 
 
+class IdentityGallery(Base, TimestampMixin):
+    """IdentityGallery model representing unique track identities across cameras."""
+    __tablename__ = "identity_gallery"
+    __table_args__ = (
+        sa.ForeignKeyConstraint(["org_id"], ["organizations.id"], ondelete="CASCADE"),
+        sa.Index("ix_identity_gallery_org_id", "org_id"),
+        sa.Index("ix_identity_gallery_object_type", "object_type"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+        server_default=sa.text("gen_random_uuid()")
+    )
+    org_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    object_type: Mapped[str] = mapped_column(sa.String(50), nullable=False)  # person, vehicle
+    reid_embedding: Mapped[list[float]] = mapped_column(Vector(512), nullable=False)
+    gallery_metadata: Mapped[Optional[Dict[str, Any]]] = mapped_column("metadata", JSONB, nullable=True)
+
+
 class DetectedObject(Base, TimestampMixin):
     """DetectedObject model representing object inferences on segments."""
     __tablename__ = "detected_objects"
@@ -163,11 +186,14 @@ class DetectedObject(Base, TimestampMixin):
             ondelete="CASCADE"
         ),
         sa.ForeignKeyConstraint(["org_id"], ["organizations.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(["gallery_id"], ["identity_gallery.id"], ondelete="SET NULL"),
         sa.Index("ix_detected_objects_segment_id_start_time", "segment_id", "segment_start_time"),
         sa.Index("ix_detected_objects_org_id", "org_id"),
         sa.Index("ix_detected_objects_class_label", "class_label"),
         sa.Index("ix_detected_objects_track_id", "track_id"),
         sa.Index("ix_detected_objects_created_at_brin", "created_at", postgresql_using="brin"),
+        sa.Index("ix_detected_objects_gallery_id", "gallery_id"),
+        sa.Index("ix_detected_objects_attributes_extracted", "attributes_extracted"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -194,6 +220,22 @@ class DetectedObject(Base, TimestampMixin):
     bbox_w: Mapped[float] = mapped_column(sa.Double, nullable=False)
     bbox_h: Mapped[float] = mapped_column(sa.Double, nullable=False)
     track_id: Mapped[Optional[int]] = mapped_column(sa.Integer, nullable=True)
+
+    dominant_colour: Mapped[Optional[str]] = mapped_column(sa.String(50), nullable=True)
+    colour_confidence: Mapped[Optional[float]] = mapped_column(sa.Double, nullable=True)
+    vehicle_type: Mapped[Optional[str]] = mapped_column(sa.String(50), nullable=True)
+    vehicle_type_confidence: Mapped[Optional[float]] = mapped_column(sa.Double, nullable=True)
+    upper_colour: Mapped[Optional[str]] = mapped_column(sa.String(50), nullable=True)
+    upper_colour_conf: Mapped[Optional[float]] = mapped_column(sa.Double, nullable=True)
+    lower_colour: Mapped[Optional[str]] = mapped_column(sa.String(50), nullable=True)
+    lower_colour_conf: Mapped[Optional[float]] = mapped_column(sa.Double, nullable=True)
+    carried_items: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONB, nullable=True)
+    gender_estimate: Mapped[Optional[str]] = mapped_column(sa.String(50), nullable=True)
+    gender_is_estimate: Mapped[Optional[bool]] = mapped_column(sa.Boolean(), nullable=True)
+    attributes_extracted: Mapped[bool] = mapped_column(sa.Boolean(), default=False, server_default=sa.text("false"), nullable=False)
+    reid_embedding: Mapped[Optional[list[float]]] = mapped_column(Vector(512), nullable=True)
+    gallery_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), nullable=True)
+
 
 
 class Event(Base, TimestampMixin):

@@ -217,6 +217,7 @@ app.add_middleware(
 app.include_router(health.router) # Root level health check bypass
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(search.router, prefix="/api/v1")
+app.include_router(search.detections_router, prefix="/api/v1")
 app.include_router(chat.router, prefix="/api/v1")
 app.include_router(analytics.router, prefix="/api/v1")
 app.include_router(cameras.router, prefix="/api/v1")

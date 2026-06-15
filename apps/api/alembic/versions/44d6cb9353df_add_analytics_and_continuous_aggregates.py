@@ -83,14 +83,38 @@ def upgrade() -> None:
 
     try:
         # Drop existing views/materialized views first to ensure we can recreate them clean
-        cursor.execute("DROP VIEW IF EXISTS events_hourly CASCADE;")
-        cursor.execute("DROP MATERIALIZED VIEW IF EXISTS events_hourly CASCADE;")
-        cursor.execute("DROP VIEW IF EXISTS search_queries_hourly CASCADE;")
-        cursor.execute("DROP MATERIALIZED VIEW IF EXISTS search_queries_hourly CASCADE;")
-        cursor.execute("DROP VIEW IF EXISTS detections_daily CASCADE;")
-        cursor.execute("DROP MATERIALIZED VIEW IF EXISTS detections_daily CASCADE;")
-        cursor.execute("DROP VIEW IF EXISTS camera_health_hourly CASCADE;")
-        cursor.execute("DROP MATERIALIZED VIEW IF EXISTS camera_health_hourly CASCADE;")
+        try:
+            cursor.execute("DROP MATERIALIZED VIEW IF EXISTS events_hourly CASCADE;")
+        except Exception:
+            pass
+        try:
+            cursor.execute("DROP VIEW IF EXISTS events_hourly CASCADE;")
+        except Exception:
+            pass
+        try:
+            cursor.execute("DROP MATERIALIZED VIEW IF EXISTS search_queries_hourly CASCADE;")
+        except Exception:
+            pass
+        try:
+            cursor.execute("DROP VIEW IF EXISTS search_queries_hourly CASCADE;")
+        except Exception:
+            pass
+        try:
+            cursor.execute("DROP MATERIALIZED VIEW IF EXISTS detections_daily CASCADE;")
+        except Exception:
+            pass
+        try:
+            cursor.execute("DROP VIEW IF EXISTS detections_daily CASCADE;")
+        except Exception:
+            pass
+        try:
+            cursor.execute("DROP MATERIALIZED VIEW IF EXISTS camera_health_hourly CASCADE;")
+        except Exception:
+            pass
+        try:
+            cursor.execute("DROP VIEW IF EXISTS camera_health_hourly CASCADE;")
+        except Exception:
+            pass
 
         # 4. Create Standard Views instead of TimescaleDB Continuous Aggregates
         # Events hourly aggregate view
@@ -155,6 +179,7 @@ def upgrade() -> None:
     finally:
         cursor.close()
         raw_conn.autocommit = old_autocommit
+    raw_conn.commit()
 
 
 def downgrade() -> None:

@@ -22,12 +22,14 @@ from app.models.schema_models import Camera, CameraAssignment
 from app.services.nl_query.parser import NLUQueryParser
 from app.services.vector_search import VectorSearchService
 from app.core.auth.keycloak import get_redis_client
+from search.search_coordinator import SearchCoordinator
 
 logger = structlog.get_logger("api.chat")
 router = APIRouter(prefix="/chat", tags=["Conversational AI Search"])
 
 nlu_parser = NLUQueryParser()
 vector_search_service = VectorSearchService()
+_search_coordinator = SearchCoordinator()
 
 # Encryption setup for history at rest
 fernet = Fernet(settings.ENCRYPTION_KEY.encode())
@@ -861,13 +863,32 @@ async def websocket_chat(
                     user_payload.sub, 
                     db
                 )
-                
-                search_res = await vector_search_service.search(
-                    query_text=refined_query,
-                    user_allowed_cameras=allowed_cams,
-                    parsed_query_override=parsed_query
-                )
-                results = search_res.get("results", [])
+
+                # Primary path: use upgraded SearchCoordinator (structured + semantic + reranking)
+                try:
+                    coord_res = await _search_coordinator.search(
+                        db_async_session=db,
+                        query_text=refined_query,
+                        allowed_camera_ids=allowed_cams,
+                        limit=10
+                    )
+                    results = coord_res.get("results", [])
+                    # Merge coordinator intent into intent_dict for frontend display
+                    coord_intent = coord_res.get("intent", {})
+                    intent_dict.update({
+                        "search_source": coord_res.get("search_source", "coordinator"),
+                        "coordinator_intent": coord_intent,
+                        "latency_ms": coord_res.get("latency_ms", 0)
+                    })
+                    logger.info("SearchCoordinator returned results", count=len(results), source=coord_res.get("search_source"))
+                except Exception as coord_err:
+                    logger.warning("SearchCoordinator failed, falling back to VectorSearchService", error=str(coord_err))
+                    search_res = await vector_search_service.search(
+                        query_text=refined_query,
+                        user_allowed_cameras=allowed_cams,
+                        parsed_query_override=parsed_query
+                    )
+                    results = search_res.get("results", [])
 
             # Immediately send search results so frontend grid updates
             await websocket.send_text(json.dumps({
