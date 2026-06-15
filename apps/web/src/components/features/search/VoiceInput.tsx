@@ -6,6 +6,12 @@ import { Button } from "@/components/ui/button";
 import { useSession } from "next-auth/react";
 import { env } from "@/env";
 
+// Define SpeechRecognition types to avoid TypeScript compilation errors
+const SpeechRecognitionAPI =
+  typeof window !== "undefined"
+    ? (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    : null;
+
 interface VoiceInputProps {
   onTranscript: (text: string) => void;
   disabled?: boolean;
@@ -19,15 +25,67 @@ export default function VoiceInput({ onTranscript, disabled }: VoiceInputProps) 
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const recognitionRef = useRef<any>(null);
 
   const startRecording = async () => {
     setError(null);
     audioChunksRef.current = [];
 
     try {
+      // Request microphone stream first to trigger permission dialog and ensure device availability
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+      if (SpeechRecognitionAPI) {
+        try {
+          const recognition = new SpeechRecognitionAPI();
+          recognition.continuous = false;
+          recognition.interimResults = false;
+          recognition.lang = "en-US";
+
+          recognition.onstart = () => {
+            setIsRecording(true);
+          };
+
+          recognition.onresult = (event: any) => {
+            const text = event.results[0][0].transcript;
+            if (text) {
+              onTranscript(text);
+            }
+          };
+
+          recognition.onerror = async (event: any) => {
+            console.warn("Speech recognition error, falling back to MediaRecorder...", event.error);
+            // On speech recognition failure (e.g. Chrome cloud service blocked), fall back to recording & Whisper API
+            recognition.onend = null; // Prevent double handling
+            recognitionRef.current = null;
+            await startMediaRecorderWithStream(stream);
+          };
+
+          recognition.onend = () => {
+            setIsRecording(false);
+            recognitionRef.current = null;
+            stream.getTracks().forEach((track) => track.stop());
+          };
+
+          recognitionRef.current = recognition;
+          recognition.start();
+        } catch (err) {
+          console.error("Failed to start SpeechRecognition, falling back...", err);
+          await startMediaRecorderWithStream(stream);
+        }
+      } else {
+        // Fallback to MediaRecorder & Backend Transcription API
+        await startMediaRecorderWithStream(stream);
+      }
+    } catch (err) {
+      console.error("Failed to get microphone stream", err);
+      setError("Microphone access denied or unsupported.");
+    }
+  };
+
+  const startMediaRecorderWithStream = async (stream: MediaStream) => {
+    try {
       const mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
-      
       mediaRecorderRef.current = mediaRecorder;
       
       mediaRecorder.ondataavailable = (event) => {
@@ -46,14 +104,19 @@ export default function VoiceInput({ onTranscript, disabled }: VoiceInputProps) 
 
       mediaRecorder.start(200);
       setIsRecording(true);
+      setError(null); // Clear any transient speech recognition errors
     } catch (err) {
-      console.error("Failed to start voice recording", err);
-      setError("Microphone access denied or unsupported.");
+      console.error("Failed to initialize MediaRecorder", err);
+      setError("Audio recording failed.");
+      stream.getTracks().forEach((track) => track.stop());
     }
   };
 
   const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+      setIsRecording(false);
+    } else if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
       setIsRecording(false);
     }
@@ -75,7 +138,7 @@ export default function VoiceInput({ onTranscript, disabled }: VoiceInputProps) 
         {
           method: "POST",
           headers: {
-            "X-Tenant-ID": "11111111-1111-1111-1111-111111111111",
+            "X-Tenant-ID": "22222222-2222-2222-2222-222222222222",
           },
           body: formData,
         }
@@ -96,6 +159,7 @@ export default function VoiceInput({ onTranscript, disabled }: VoiceInputProps) 
       setIsTranscribing(false);
     }
   };
+
 
   return (
     <div className="flex items-center gap-2 shrink-0">

@@ -451,8 +451,8 @@ def _process_video_sync(video_path: str):
         fps = 30.0
 
     frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    # Sample at 5 FPS to keep it fast
-    sample_interval = max(1, int(fps / 5))
+    # Sample at 1.5 FPS to keep it fast
+    sample_interval = max(1, int(fps / 1.5))
 
     logger.info("Starting GPU processing of video", path=video_path, fps=fps, total_frames=frame_count, sample_interval=sample_interval)
 
@@ -470,29 +470,39 @@ def _process_video_sync(video_path: str):
     frame_id = 0
 
     while True:
-        ret, frame = cap.read()
+        frame_id += 1
+        # Grab frame without decoding pixel data (3x-5x faster frame skipping)
+        ret = cap.grab()
         if not ret:
             break
 
-        frame_id += 1
         # Only process sampled frames
         if frame_id % sample_interval != 0:
             continue
 
+        # Decode the grabbed frame
+        ret, frame = cap.retrieve()
+        if not ret:
+            break
+
         timestamp_ms = (frame_id / fps) * 1000.0
 
-        # Run YOLOv11m tracking on the frame
+        # Run YOLOv11m tracking on the frame with optimized imgsz=480
         results = yolo_model.track(
             source=frame,
             persist=True,
             conf=0.30,
             iou=0.45,
             classes=[0, 1, 2, 3, 5, 7],
+            imgsz=480,
             verbose=False
         )
 
         detections = []
         h, w = frame.shape[:2]
+
+        crops_to_encode = []
+        detection_metadata = []
 
         if results and results[0].boxes is not None:
             boxes = results[0].boxes
@@ -515,33 +525,44 @@ def _process_video_sync(video_path: str):
                 if (x2 - x1) < 10 or (y2 - y1) < 10:
                     continue
 
-                # Crop object and convert BGR -> RGB for CLIP
+                # Crop object and convert BGR -> RGB for CLIP, pre-resizing to native 224x224
                 crop = frame[y1:y2, x1:x2]
-                crop_rgb = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)
+                crop_resized = cv2.resize(crop, (224, 224))
+                crop_rgb = cv2.cvtColor(crop_resized, cv2.COLOR_BGR2RGB)
                 
-                # Get CLIP Embedding
-                crop_emb, _, _ = clip_encoder.encode_image([crop_rgb])
-
-                # Zero-shot classification for attributes
-                color_sims = np.dot(color_vectors, crop_emb[0])
-                predicted_color = COLOR_PROMPTS[np.argmax(color_sims)]
-
-                clothing_sims = np.dot(clothing_vectors, crop_emb[0])
-                predicted_clothing = CLOTHING_PROMPTS[np.argmax(clothing_sims)]
-
-                detections.append({
+                crops_to_encode.append(crop_rgb)
+                detection_metadata.append({
                     "label": ALLOWED_CLASSES[cls_id],
                     "bbox": [x1 / w, y1 / h, x2 / w, y2 / h], # normalized [xmin, ymin, xmax, ymax]
                     "confidence": conf,
                     "track_id": track_id,
-                    "embedding": crop_emb[0], # numpy array
-                    "color": predicted_color,
-                    "clothing": predicted_clothing
                 })
 
-        # Encode full frame for overall description similarity
-        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        frame_emb, _, _ = clip_encoder.encode_image([frame_rgb])
+        # Encode full frame for overall description similarity, pre-resizing to native 224x224
+        frame_resized = cv2.resize(frame, (224, 224))
+        frame_rgb = cv2.cvtColor(frame_resized, cv2.COLOR_BGR2RGB)
+        crops_to_encode.append(frame_rgb)
+
+        # Batch encode all crops and the full frame in a single call
+        embs, _, _ = clip_encoder.encode_image(crops_to_encode)
+
+        # Distribute embeddings and compute zero-shot predictions
+        for idx, det in enumerate(detection_metadata):
+            crop_emb = embs[idx]
+            color_sims = np.dot(color_vectors, crop_emb)
+            predicted_color = COLOR_PROMPTS[np.argmax(color_sims)]
+
+            clothing_sims = np.dot(clothing_vectors, crop_emb)
+            predicted_clothing = CLOTHING_PROMPTS[np.argmax(clothing_sims)]
+
+            detections.append({
+                **det,
+                "embedding": crop_emb,
+                "color": predicted_color,
+                "clothing": predicted_clothing
+            })
+
+        frame_emb = embs[-1]
 
         # Generate summary description text
         items = []
@@ -562,7 +583,7 @@ def _process_video_sync(video_path: str):
             "frame_number": frame_id,
             "timestamp_ms": timestamp_ms,
             "detections": detections,
-            "frame_embedding": frame_emb[0],
+            "frame_embedding": frame_emb,
             "description": description
         })
 
