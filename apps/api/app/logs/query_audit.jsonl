@@ -589,3 +589,6 @@
 {"timestamp": "2026-06-13T16:14:40Z", "user_id": "system_user", "query": "same individual seen near lobby and loading dock", "collection": "frame_embeddings", "results_count": 5, "latency_ms": 16.496800002641976}
 {"timestamp": "2026-06-13T16:14:40Z", "user_id": "system_user", "query": "dwell time of forklift near bay 2", "collection": "frame_embeddings", "results_count": 4, "latency_ms": 16.694999998435378}
 {"timestamp": "2026-06-13T16:14:40Z", "user_id": "system_user", "query": "vehicles entering parking lot between 12 PM and 2 PM", "collection": "frame_embeddings", "results_count": 4, "latency_ms": 15.462300012586638}
+{"timestamp": "2026-08-23T16:08:49Z", "user_id": "system_user", "query": "Show red cars in parking lot", "collection": "frame_embeddings", "results_count": 5, "latency_ms": 6042.365600000267}
+{"timestamp": "2026-08-23T16:09:35Z", "user_id": "system_user", "query": "black car", "collection": "frame_embeddings", "results_count": 7, "latency_ms": 5003.523000000314}
+{"timestamp": "2026-08-23T16:52:17Z", "user_id": "system_user", "query": "Yellow car reversing", "collection": "frame_embeddings", "results_count": 8, "latency_ms": 5035.830200000419}

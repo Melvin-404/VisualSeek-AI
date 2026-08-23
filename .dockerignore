@@ -1,0 +1,44 @@
+# Dependencies
+node_modules
+.venv
+__pycache__
+*.pyc
+
+# Build outputs
+.next
+.turbo
+*.egg-info
+dist
+build
+
+# Version control
+.git
+.github
+
+# IDE / OS
+.vscode
+.idea
+*.swp
+*.swo
+Thumbs.db
+.DS_Store
+
+# Test / Dev files
+.pytest_cache
+coverage
+*.test.*
+tests
+
+# Documentation
+docs
+reports
+scratch
+*.md
+!README.md
+
+# Misc
+milvus_migrations.db
+infra
+.husky
+.pre-commit-config.yaml
+commitlint.config.js

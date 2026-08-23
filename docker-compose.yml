@@ -1,69 +1,35 @@
-version: "3.8"
+# ============================================
+# VisualSeek AI - Combined Docker Compose
+# ============================================
+# Usage:
+#   docker compose up --build -d     (start combined app)
+#   docker compose down              (stop combined app)
+#   docker compose logs -f           (view logs)
+# ============================================
+
+name: visualseek-ai
 
 services:
-  web:
+  app:
     build:
       context: .
-      dockerfile: ./apps/web/Dockerfile
+      dockerfile: ./Dockerfile
+    container_name: visualseek-app
     ports:
       - "3000:3000"
-    environment:
-      - NEXT_PUBLIC_API_URL=http://api:8000
-      - NEXT_PUBLIC_APP_ENV=development
-    depends_on:
-      - api
-
-  api:
-    build:
-      context: .
-      dockerfile: ./apps/api/Dockerfile
-    ports:
       - "8000:8000"
     environment:
-      - API_HOST=0.0.0.0
-      - API_PORT=8000
+      # Access host-provided database and redis
+      - DATABASE_URL=postgresql+psycopg://postgres:postgres@host.docker.internal:5435/postgres
+      - REDIS_URL=redis://host.docker.internal:6379/0
+      - ENCRYPTION_KEY=ba58mDwB9gULkdH9B7Ljy79q_0dLuRdSEdcYrtRe2p8=
       - API_ENV=development
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
-
-  ai-pipeline:
-    build:
-      context: .
-      dockerfile: ./packages/ai-pipeline/Dockerfile
-    environment:
-      - PYTHONUNBUFFERED=1
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
-
-  redis:
-    image: redis:7-alpine
-    container_name: visionquery-redis
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-
-  keycloak:
-    image: quay.io/keycloak/keycloak:24.0.5
-    container_name: visionquery-keycloak
-    command: start-dev
-    environment:
-      - KEYCLOAK_ADMIN=admin
-      - KEYCLOAK_ADMIN_PASSWORD=admin
-      - KC_DB=dev-mem
-    ports:
-      - "8080:8080"
-
-volumes:
-  redis_data:
-
+      - TRANSFORMERS_OFFLINE=1
+      - HF_HUB_OFFLINE=1
+      - HF_HUB_DISABLE_SYMLINKS_WARNING=1
+      - CORS_ORIGINS=["http://localhost:3000","http://127.0.0.1:3000"]
+      - JWT_SECRET_KEY=supersecretjwtkeyforvisualseekbackendapiwhichshouldbechangedinprod
+      - JWT_ALGORITHM=HS256
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped

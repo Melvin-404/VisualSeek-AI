@@ -14,7 +14,7 @@ export default function LoginPage() {
           <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-primary/10">
             <Shield className="h-8 w-8 text-primary" />
           </div>
-          <h1 className="text-xl font-bold text-foreground">Vision Query AI</h1>
+          <h1 className="text-xl font-bold text-foreground">VisualSeek AI</h1>
           <p className="text-center text-sm text-muted-foreground">
             Sign in with your enterprise credentials
           </p>

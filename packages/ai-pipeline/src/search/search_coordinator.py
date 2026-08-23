@@ -131,14 +131,22 @@ class SearchCoordinator:
                 if not h.get("camera_id") and h.get("segment_id"):
                     h["camera_id"] = segment_camera_map.get(h["segment_id"])
 
-        # 4. Apply Reranking combining semantic score, metadata similarity, and temporal decay
+        # 4. Apply temporal action validation if this is an action query
+        def sync_action_validator(session):
+            return self.temporal_search.analyze_action(session, hits, intent)
+            
+        if intent.is_action_query:
+            logger.info("Applying temporal action validation", action=intent.action)
+            hits = await db_async_session.run_sync(sync_action_validator)
+
+        # 5. Apply Reranking combining semantic score, metadata similarity, and temporal decay
         logger.info("Applying reranker on hits", count=len(hits))
         final_hits = self.reranker.rerank(intent=intent, hits=hits)
 
-        # 5. Truncate to limit
+        # 6. Truncate to limit
         final_hits = final_hits[:limit]
 
-        # 6. Formulate next cursor
+        # 7. Formulate next cursor
         next_cursor = self.semantic_search._get_next_cursor(len(final_hits), limit, cursor)
 
         latency = (time.perf_counter() - start_time) * 1000.0
@@ -153,6 +161,8 @@ class SearchCoordinator:
                 "gender": intent.gender,
                 "spatial_zone": intent.spatial_zone,
                 "time_range_hours": intent.time_range_hours,
+                "action": intent.action,
+                "is_action_query": intent.is_action_query
             },
             "results": final_hits,
             "count": len(final_hits),

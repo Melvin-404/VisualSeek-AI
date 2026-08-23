@@ -23,12 +23,12 @@ export function ReportGenerator() {
       const Helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
 
       // 2. Draw Title Header
-      page.drawText("VISION QUERY AI - EXECUTIVE REPORT", {
+      page.drawText("VISUALSEEK AI - EXECUTIVE REPORT", {
         x: 40,
         y: height - 60,
         size: 18,
         font: HelveticaBold,
-        color: rgb(0.46, 0.725, 0.0) // NVIDIA Green
+        color: rgb(0.22, 0.74, 0.97) // Cool Blue
       });
 
       // Subtitle
@@ -155,7 +155,7 @@ export function ReportGenerator() {
       const blob = new Blob([pdfBytes as any], { type: "application/pdf" });
       const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);
-      link.download = `VisionQuery_AnalyticsReport_${new Date().toISOString().slice(0, 10)}.pdf`;
+      link.download = `VisualSeek_AnalyticsReport_${new Date().toISOString().slice(0, 10)}.pdf`;
       link.click();
     } catch (err) {
       console.error("Failed to generate PDF", err);

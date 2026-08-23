@@ -20,44 +20,18 @@ import {
   Maximize2,
   X,
   Target,
-  Cpu
+  Cpu,
+  CheckCircle2,
+  AlertTriangle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import VoiceInput from "./VoiceInput";
 import SearchResults from "./SearchResults";
-
-interface Detection {
-  label: string;
-  bbox: [number, number, number, number];
-  attributes?: Record<string, string>;
-}
-
-interface SearchResult {
-  id: string;
-  camera_id: string;
-  timestamp_ms: number;
-  frame_number: number;
-  segment_id: string;
-  object_classes: string[];
-  score: number;
-  raw_labels: {
-    detections: Detection[];
-    description: string;
-    video_path: string;
-  };
-}
-
-interface ChatMessage {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  results?: SearchResult[];
-  intent?: any;
-  isStreaming?: boolean;
-  timestamp: Date;
-}
+import { useSearchHistoryContext } from "@/contexts/SearchHistoryContext";
+import { formatTimestamp } from "@/utils/formatTimestamp";
+import { Detection, SearchResult, ChatMessage, SearchHistoryItem } from "@/types/search";
 
 interface ChatInterfaceProps {
   onAnalyseFrame: (result: SearchResult) => void;
@@ -230,9 +204,12 @@ const DEFAULT_MOCK_ANSWER = {
 
 export default function ChatInterface({ onAnalyseFrame }: ChatInterfaceProps) {
   const { data: session } = useSession();
+  const { addSearch, selectedHistoryItem, setSelectedHistoryItem } = useSearchHistoryContext();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState("");
-  const [sessionId] = useState(() => `sess_${Math.random().toString(36).substring(2, 11)}`);
+  const [sessionId, setSessionId] = useState(() => `sess_${Math.random().toString(36).substring(2, 11)}`);
+  const [lastQuery, setLastQuery] = useState<string | null>(null);
+  const [restoredLabel, setRestoredLabel] = useState<string | null>(null);
   const [suggestions, setSuggestions] = useState<string[]>([
     "Show red cars in parking lot",
     "Find people with backpacks in lobby",
@@ -245,7 +222,12 @@ export default function ChatInterface({ onAnalyseFrame }: ChatInterfaceProps) {
 
   const [activeVideo, setActiveVideo] = useState<{ id: string; url: string; filename: string } | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading" | "processing" | "ready" | "error">("idle");
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchStage, setSearchStage] = useState(0);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const searchStageTimerRef = useRef<any>(null);
 
   const socketRef = useRef<WebSocket | null>(null);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
@@ -261,46 +243,104 @@ export default function ChatInterface({ onAnalyseFrame }: ChatInterfaceProps) {
     };
   }, []);
 
+  // Run query from URL parameter if present on mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const queryParam = params.get("q");
+      if (queryParam) {
+        const timer = setTimeout(() => {
+          sendMessage(queryParam);
+        }, 1200);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, []);
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setIsUploading(true);
+    setUploadStatus("uploading");
+    setUploadProgress(0);
+
     const token = session?.accessToken || "mock-token";
     const formData = new FormData();
     formData.append("file", file);
 
-    try {
-      const response = await fetch(`${env.NEXT_PUBLIC_API_URL}/api/v1/chat/upload-video?token=${token}`, {
-        method: "POST",
-        headers: {
-          "X-Tenant-ID": "22222222-2222-2222-2222-222222222222",
-        },
-        body: formData,
-      });
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `${env.NEXT_PUBLIC_API_URL}/api/v1/chat/upload-video?token=${token}`, true);
+    xhr.setRequestHeader("X-Tenant-ID", "22222222-2222-2222-2222-222222222222");
 
-      if (!response.ok) {
-        throw new Error("Failed to upload video");
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) {
+        const percent = Math.round((event.loaded / event.total) * 100);
+        setUploadProgress(percent);
+        if (percent === 100) {
+          setUploadStatus("processing");
+        }
       }
+    };
 
-      const data = await response.json();
-      setActiveVideo({
-        id: data.video_id,
-        url: data.video_url,
-        filename: data.filename,
-      });
-    } catch (err) {
-      console.error("Error uploading video", err);
-      alert("Failed to upload and process video. Make sure the backend server is running and CUDA is available.");
-    } finally {
+    xhr.onload = () => {
       setIsUploading(false);
-    }
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const data = JSON.parse(xhr.responseText);
+          setActiveVideo({
+            id: data.video_id,
+            url: data.video_url,
+            filename: data.filename,
+          });
+          setUploadStatus("ready");
+          // Do NOT auto-dismiss — keep the video card visible
+        } catch (err) {
+          console.error("Error parsing upload response", err);
+          setUploadStatus("error");
+          alert("Failed to parse video upload response.");
+        }
+      } else {
+        console.error("Upload failed with status", xhr.status);
+        setUploadStatus("error");
+        alert("Failed to upload and process video. Make sure the backend server is running and CUDA is available.");
+      }
+    };
+
+    xhr.onerror = () => {
+      console.error("Upload network error");
+      setIsUploading(false);
+      setUploadStatus("error");
+      alert("Network error during upload.");
+    };
+
+    xhr.send(formData);
   };
 
   // Scroll to bottom of chat on message update
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Cycle through search stage labels while a real search is in-flight
+  const SEARCH_STAGES = [
+    "Analyzing query...",
+    "Finding candidate frames...",
+    "Analyzing video moments...",
+    "Ranking results...",
+    "Preparing results...",
+  ];
+
+  useEffect(() => {
+    if (isSearching) {
+      searchStageTimerRef.current = setInterval(() => {
+        setSearchStage((s) => (s + 1) % SEARCH_STAGES.length);
+      }, 1800);
+    } else {
+      clearInterval(searchStageTimerRef.current);
+    }
+    return () => clearInterval(searchStageTimerRef.current);
+  }, [isSearching]);
 
   const connectWebSocket = () => {
     setIsWsConnecting(true);
@@ -333,8 +373,9 @@ export default function ChatInterface({ onAnalyseFrame }: ChatInterfaceProps) {
         if (!data) return;
 
         if (data.type === "search_results") {
-          // 1. Update the last message or create an empty streaming message with the search results
+          setIsSearching(false);
           setMessages((prev) => {
+
             const lastMsg = prev[prev.length - 1];
             if (lastMsg && lastMsg.role === "assistant") {
               return prev.map((msg, i) =>
@@ -377,15 +418,19 @@ export default function ChatInterface({ onAnalyseFrame }: ChatInterfaceProps) {
         } else if (data.type === "suggestions") {
           // 3. Update suggested follow-up query pills
           setSuggestions(data.suggestions || []);
+          setIsSearching(false);
           // Stop streaming status on last message
           setMessages((prev) => {
+
             return prev.map((msg, i) =>
               i === prev.length - 1 ? { ...msg, isStreaming: false } : msg
             );
           });
         } else if (data.type === "error") {
           console.error("WS error returned", data.message);
+          setIsSearching(false);
           setMessages((prev) => {
+
             // Mark last message as failed and non-streaming
             return prev.map((msg, i) =>
               i === prev.length - 1
@@ -437,6 +482,8 @@ export default function ChatInterface({ onAnalyseFrame }: ChatInterfaceProps) {
     setMessages((prev) => [...prev, userMsg]);
     setInputText("");
     setSuggestions([]); // Clear suggestions during streaming
+    setIsSearching(true);
+    setSearchStage(0);
 
     const normalizedText = text.toLowerCase().trim();
     const mockData = MOCK_ANSWERS[normalizedText] || {
@@ -481,7 +528,9 @@ export default function ChatInterface({ onAnalyseFrame }: ChatInterfaceProps) {
           currentWordIndex++;
         } else {
           clearInterval(streamInterval);
+          setIsSearching(false);
           setMessages((prev) =>
+
             prev.map((msg) =>
               msg.id === assistantMsgId
                 ? { ...msg, isStreaming: false }
@@ -497,6 +546,7 @@ export default function ChatInterface({ onAnalyseFrame }: ChatInterfaceProps) {
   // Submits a message text to the server
   const sendMessage = (text: string) => {
     if (!text.trim()) return;
+    if (isSearching) return; // prevent duplicate submissions
 
     if (isMockMode) {
       sendMockMessage(text);
@@ -516,6 +566,8 @@ export default function ChatInterface({ onAnalyseFrame }: ChatInterfaceProps) {
     setMessages((prev) => [...prev, userMsg]);
     setInputText("");
     setSuggestions([]); // Clear suggestions during streaming
+    setIsSearching(true);
+    setSearchStage(0);
 
     // Send JSON payload
     socketRef.current.send(
@@ -527,10 +579,89 @@ export default function ChatInterface({ onAnalyseFrame }: ChatInterfaceProps) {
     );
   };
 
+  const restoredTimerRef = useRef<any>(null);
+
+  const handleHistorySelect = (item: SearchHistoryItem) => {
+    if (!item.snapshot) {
+      setInputText(item.query);
+      sendMessage(item.query);
+      return;
+    }
+
+    setInputText("");
+
+    const restoredMessages = item.snapshot.messages.map((msg: any) => ({
+      ...msg,
+      timestamp: new Date(msg.timestamp),
+    }));
+
+    setMessages(restoredMessages);
+
+    const assistantMsg = [...restoredMessages].reverse().find(
+      (msg) => msg.role === "assistant" && msg.results !== undefined
+    );
+    if (assistantMsg) {
+      setActiveMessageId(assistantMsg.id);
+    } else {
+      setActiveMessageId(null);
+    }
+
+    setSessionId(item.snapshot.sessionId);
+
+    if (restoredTimerRef.current) {
+      clearTimeout(restoredTimerRef.current);
+    }
+    setRestoredLabel(`Restored · ${formatTimestamp(item.timestamp)}`);
+    restoredTimerRef.current = setTimeout(() => {
+      setRestoredLabel(null);
+    }, 3000);
+  };
+
+  useEffect(() => {
+    if (selectedHistoryItem) {
+      handleHistorySelect(selectedHistoryItem);
+      setSelectedHistoryItem(null);
+    }
+  }, [selectedHistoryItem, setSelectedHistoryItem]);
+
+  useEffect(() => {
+    if (!lastQuery) return;
+
+    let userMsgIdx = -1;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (
+        messages[i].role === "user" &&
+        messages[i].content.toLowerCase() === lastQuery.toLowerCase()
+      ) {
+        userMsgIdx = i;
+        break;
+      }
+    }
+
+    if (userMsgIdx !== -1) {
+      const assistantMsg = messages[userMsgIdx + 1];
+      if (
+        assistantMsg &&
+        assistantMsg.role === "assistant" &&
+        assistantMsg.results !== undefined &&
+        !assistantMsg.isStreaming
+      ) {
+        addSearch(lastQuery, {
+          messages: messages.slice(0, userMsgIdx + 2),
+          visualMatches: assistantMsg.results || [],
+          nluIntent: assistantMsg.intent || null,
+          sessionId,
+        });
+        setLastQuery(null);
+      }
+    }
+  }, [messages, lastQuery, sessionId, addSearch]);
+
   // Voice transcript callback
   const handleVoiceTranscript = (text: string) => {
     setInputText(text);
     sendMessage(text);
+    setLastQuery(text);
   };
 
   // Simulates alert creation based on current search intent
@@ -547,21 +678,21 @@ export default function ChatInterface({ onAnalyseFrame }: ChatInterfaceProps) {
     let contentHtml = `
       <html>
         <head>
-          <title>VisionQuery Search Report</title>
+          <title>VisualSeek AI Search Report</title>
           <style>
             body { font-family: 'Inter', sans-serif; background-color: #ffffff; color: #111111; padding: 30px; }
-            h1 { color: #76b900; border-bottom: 2px solid #eaeaea; padding-bottom: 10px; font-size: 24px; }
+            h1 { color: #38bdf8; border-bottom: 2px solid #eaeaea; padding-bottom: 10px; font-size: 24px; }
             .meta { font-size: 11px; color: #666; margin-bottom: 30px; }
             .message { margin-bottom: 20px; padding: 15px; border-radius: 8px; }
             .user { background-color: #f7f7f7; border-left: 4px solid #999; }
-            .assistant { background-color: #f0f7e6; border-left: 4px solid #76b900; }
+            .assistant { background-color: #f0f9ff; border-left: 4px solid #38bdf8; }
             .role { font-weight: bold; font-size: 12px; margin-bottom: 5px; text-transform: uppercase; }
             .results-header { font-weight: bold; margin-top: 15px; font-size: 13px; color: #333; }
             .result-item { font-size: 12px; margin-left: 20px; margin-top: 5px; color: #555; }
           </style>
         </head>
         <body>
-          <h1>VisionQuery Conversational Search Report</h1>
+          <h1>VisualSeek AI Conversational Search Report</h1>
           <div class="meta">Generated on ${new Date().toLocaleString()} | Session ID: ${sessionId}</div>
     `;
 
@@ -670,178 +801,86 @@ export default function ChatInterface({ onAnalyseFrame }: ChatInterfaceProps) {
   };
 
   return (
-    <div className="flex flex-col lg:flex-row gap-5 w-full h-[calc(100vh-140px)] min-h-[500px]">
-      
-      {/* COLUMN 1: LEFT - Conversation (32% width) */}
-      <div className="w-full lg:w-[32%] shrink-0 flex flex-col border border-border/80 rounded-2xl overflow-hidden bg-card/25 backdrop-blur-sm relative h-full">
-        {/* Chat Header */}
-        <div className="px-4 py-3 border-b border-border bg-card/50 flex justify-between items-center shrink-0">
-          <div className="flex items-center gap-2">
-            <Bot className="h-4 w-4 text-primary animate-pulse" />
-            <div>
-              <span className="text-xs font-bold text-foreground flex items-center gap-1.5 uppercase tracking-wide">
-                AI Investigator
-                <span className="relative flex h-1.5 w-1.5 ml-1">
-                  <span className={cn(
-                    "animate-ping absolute inline-flex h-full w-full rounded-full opacity-75",
-                    isMockMode ? "bg-warning" : isWsConnecting ? "bg-blue-500" : "bg-success"
-                  )} />
-                  <span className={cn(
-                    "relative inline-flex rounded-full h-1.5 w-1.5",
-                    isMockMode ? "bg-warning" : isWsConnecting ? "bg-blue-500" : "bg-success"
-                  )} />
-                </span>
-              </span>
-              <span className="text-[9px] font-mono text-muted-foreground block">
-                Session: {sessionId.slice(0, 12)}
-              </span>
-            </div>
-          </div>
+    <div className="flex flex-col gap-4 w-full h-[calc(100vh-140px)] min-h-[500px] max-w-5xl mx-auto">
 
-          <div className="flex items-center gap-1">
-            {messages.length > 0 && (
-              <>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleExportPDF}
-                  className="h-7 w-7 text-muted-foreground hover:text-foreground cursor-pointer"
-                  title="PDF Report"
-                >
-                  <Download className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleClearHistory}
-                  className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10 cursor-pointer"
-                  title="Clear history"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </>
-            )}
-          </div>
-        </div>
-
-
-
-        {/* Alert Registration Notification toast */}
-        {alertSuccess && (
-          <div className="absolute top-16 left-1/2 -translate-x-1/2 bg-success text-black font-bold text-[10px] px-3 py-1.5 rounded-full shadow-lg z-50 flex items-center gap-1.5 animate-bounce uppercase tracking-wide">
-            <Bell className="h-3.5 w-3.5" />
-            <span>{alertSuccess}</span>
-          </div>
-        )}
-
-        {/* Messages List Thread */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center max-w-[200px] mx-auto space-y-3">
-              <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20">
-                <Sparkles className="h-5 w-5 text-primary animate-pulse" />
-              </div>
-              <h3 className="text-xs font-bold text-foreground uppercase tracking-wider">Initiate Search</h3>
-              <p className="text-[10px] text-muted-foreground leading-relaxed">
-                Describe target entities, colors, or locations. Results will populate center dashboard.
-              </p>
-            </div>
-          ) : (
-            messages.map((msg) => (
-              <div 
-                key={msg.id} 
-                className={cn(
-                  "rounded-xl p-3 border text-[11px] leading-relaxed transition-all duration-200 cursor-pointer",
-                  msg.role === "user"
-                    ? "bg-muted/30 border-border/80 text-foreground ml-6 hover:bg-muted/40"
-                    : activeMsg?.id === msg.id
-                    ? "bg-primary/[0.02] border-primary/30 text-foreground mr-6"
-                    : "bg-card/40 border-border/60 text-foreground mr-6 hover:border-border"
-                )}
-                onClick={() => handleSelectMessage(msg.id)}
-              >
-                <div className="flex items-center gap-1.5 mb-1.5 border-b border-border/40 pb-1">
-                  {msg.role === "user" ? (
-                    <User className="h-3 w-3 text-accent" />
-                  ) : (
-                    <Bot className="h-3 w-3 text-primary" />
-                  )}
-                  <span className="font-mono text-[9px] uppercase font-bold tracking-wider text-muted-foreground">
-                    {msg.role === "user" ? "USER QUERY" : "SYSTEM RESPONSE"}
+      {/* ═══ PERSISTENT UPLOAD / VIDEO STATUS PANEL ═══ */}
+      {(uploadStatus !== "idle" || activeVideo) && (
+        <div className="w-full shrink-0 rounded-xl border border-border/70 bg-card/30 overflow-hidden">
+          {/* Upload progress row — visible while uploading/processing */}
+          {uploadStatus !== "idle" && uploadStatus !== "ready" && (
+            <div className="px-4 py-2.5 bg-card/50 border-b border-border/50 flex items-center justify-between gap-4 text-xs font-mono">
+              <div className="flex items-center gap-2.5">
+                {uploadStatus === "uploading" && <Loader2 className="h-3.5 w-3.5 animate-spin text-primary shrink-0" />}
+                {uploadStatus === "processing" && (
+                  <span className="relative flex h-3 w-3 shrink-0">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-60" />
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-primary" />
                   </span>
-                </div>
-                <div className="whitespace-pre-wrap font-medium">{msg.content}</div>
-
-                {/* Dynamic tag indicating query results */}
-                {msg.results && msg.results.length > 0 && (
-                  <div className="mt-2.5 flex items-center justify-between gap-2 bg-primary/5 border border-primary/20 rounded p-1.5">
-                    <span className="font-mono text-[9px] font-bold text-primary uppercase tracking-wide">
-                      {msg.results.length} Matches Found
-                    </span>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setActiveMessageId(msg.id);
-                      }}
-                      className={cn(
-                        "font-mono text-[8px] font-bold uppercase px-1.5 py-0.5 rounded cursor-pointer transition-colors",
-                        activeMsg?.id === msg.id 
-                          ? "bg-primary text-primary-foreground" 
-                          : "bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground"
-                      )}
-                    >
-                      {activeMsg?.id === msg.id ? "Inspecting" : "Inspect"}
-                    </button>
-                  </div>
                 )}
-
-                {msg.role === "assistant" && msg.isStreaming && (
-                  <div className="flex items-center gap-1.5 mt-2">
-                    <Loader2 className="h-3 w-3 animate-spin text-primary" />
-                    <span className="text-[9px] text-muted-foreground italic font-semibold">
-                      Ingesting indices...
-                    </span>
+                {uploadStatus === "error" && <AlertTriangle className="h-3.5 w-3.5 text-destructive shrink-0" />}
+                <span className={`font-bold uppercase tracking-widest text-[10px] ${
+                  uploadStatus === "uploading" ? "text-foreground"
+                  : uploadStatus === "processing" ? "text-primary"
+                  : "text-destructive"
+                }`}>
+                  {uploadStatus === "uploading" && "Uploading video..."}
+                  {uploadStatus === "processing" && "Processing video · Analyzing frames · Indexing..."}
+                  {uploadStatus === "error" && "Upload Failed"}
+                </span>
+              </div>
+              {uploadStatus === "uploading" && (
+                <div className="flex items-center gap-2.5 w-40 shrink-0">
+                  <div className="flex-1 h-1.5 bg-border rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-primary rounded-full transition-all duration-300 ease-out"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
                   </div>
+                  <span className="text-primary font-bold w-8 text-right">{uploadProgress}%</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Persistent video card — shown once upload completes */}
+          {activeVideo && (
+            <div className="px-4 py-3 flex items-center gap-3">
+              <div className="h-9 w-9 rounded-lg bg-primary/10 border border-primary/25 flex items-center justify-center shrink-0">
+                <Cpu className="h-4 w-4 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-0.5">Uploaded Video</div>
+                <p className="text-xs font-semibold text-foreground truncate">{activeVideo.filename}</p>
+              </div>
+              <div className="shrink-0">
+                {uploadStatus === "ready" && (
+                  <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-emerald-400 bg-emerald-400/10 border border-emerald-400/25 rounded-full px-2.5 py-1">
+                    <CheckCircle2 className="h-3 w-3" />
+                    Ready for Search
+                  </span>
+                )}
+                {uploadStatus === "processing" && (
+                  <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-primary bg-primary/10 border border-primary/25 rounded-full px-2.5 py-1">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Processing...
+                  </span>
                 )}
               </div>
-            ))
-          )}
-          <div ref={chatEndRef} />
-        </div>
-
-        {/* Suggestion Pills */}
-        {suggestions.length > 0 && (
-          <div className="px-4 py-2.5 flex flex-wrap gap-1.5 text-[9px] border-t border-border/40 bg-card/15 shrink-0">
-            {suggestions.map((sug, idx) => (
               <button
-                key={idx}
-                onClick={() => sendMessage(sug)}
-                className="px-2 py-0.5 rounded bg-muted border border-border/80 hover:border-primary/40 text-muted-foreground hover:text-primary transition-all cursor-pointer font-medium"
+                className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded cursor-pointer"
+                onClick={() => { setActiveVideo(null); setUploadStatus("idle"); }}
+                title="Remove video"
               >
-                {sug}
+                <X className="h-3.5 w-3.5" />
               </button>
-            ))}
-          </div>
-        )}
-
-        {/* Active video indicator */}
-        {activeVideo && (
-          <div className="px-4 py-2 bg-muted/50 border-t border-border flex items-center justify-between text-[10px] shrink-0 animate-fade-in">
-            <div className="flex items-center gap-1.5 text-foreground font-semibold">
-              <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-              <span>Active uploaded video: <span className="font-mono text-primary">{activeVideo.filename}</span></span>
             </div>
-            <button
-              onClick={() => setActiveVideo(null)}
-              className="text-muted-foreground hover:text-destructive p-0.5 rounded cursor-pointer"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        )}
+          )}
+        </div>
+      )}
 
-        {/* Input Controls Bar */}
-        <div className="p-3 border-t border-border bg-card/60 flex items-center gap-2 shrink-0">
+      {/* ═══ HEADER: Search Input ═══ */}
+      <div className="w-full flex flex-col border border-border/80 rounded-2xl overflow-hidden bg-card/25 backdrop-blur-sm shrink-0">
+        <div className="p-4 bg-card/60 flex items-center gap-3">
           <input
             type="file"
             accept="video/*"
@@ -854,12 +893,13 @@ export default function ChatInterface({ onAnalyseFrame }: ChatInterfaceProps) {
             size="icon"
             disabled={isUploading}
             onClick={() => fileInputRef.current?.click()}
-            className="h-9 w-9 shrink-0 text-foreground cursor-pointer rounded-xl hover:border-primary/40 transition-all"
+            className="h-10 w-10 shrink-0 text-foreground cursor-pointer rounded-xl hover:border-primary/40 transition-all"
+            title="Upload video"
           >
             {isUploading ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+              <Loader2 className="h-4 w-4 animate-spin text-primary" />
             ) : (
-              <Plus className="h-3.5 w-3.5" />
+              <Plus className="h-4 w-4" />
             )}
           </Button>
 
@@ -872,230 +912,142 @@ export default function ChatInterface({ onAnalyseFrame }: ChatInterfaceProps) {
             onSubmit={(e) => {
               e.preventDefault();
               sendMessage(inputText);
+              setLastQuery(inputText);
             }}
-            className="flex-1 flex gap-1.5"
+            className="flex-1 flex gap-2"
           >
             <input
               type="text"
               placeholder={
-                isMockMode
+                isSearching
+                  ? SEARCH_STAGES[searchStage]
+                  : isMockMode
                   ? "Chatting in local mock mode..."
                   : isWsConnecting
-                  ? "Connecting to chat..."
+                  ? "Connecting to server..."
                   : socketRef.current?.readyState !== WebSocket.OPEN
-                  ? "Chat offline, reconnecting..."
-                  : "Refine query: 'show red vehicles'..."
+                  ? "Server offline, reconnecting..."
+                  : "Search visual index: 'yellow car reversing'..."
               }
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
-              disabled={!isMockMode && (isWsConnecting || socketRef.current?.readyState !== WebSocket.OPEN)}
-              className="flex-1 h-9 bg-background border border-border hover:border-primary/40 focus:border-primary/80 focus:ring-1 focus:ring-primary rounded-xl px-3 text-[11px] font-semibold text-foreground transition-all placeholder:text-muted-foreground/60 disabled:opacity-50"
+              disabled={isSearching || (!isMockMode && (isWsConnecting || socketRef.current?.readyState !== WebSocket.OPEN))}
+              className="flex-1 h-10 bg-background border border-border hover:border-primary/40 focus:border-primary/80 focus:ring-1 focus:ring-primary rounded-xl px-4 text-sm font-semibold text-foreground transition-all placeholder:text-muted-foreground/60 disabled:opacity-60"
             />
             <Button
               type="submit"
-              disabled={!inputText.trim() || (!isMockMode && (isWsConnecting || socketRef.current?.readyState !== WebSocket.OPEN))}
+              disabled={isSearching || !inputText.trim() || (!isMockMode && (isWsConnecting || socketRef.current?.readyState !== WebSocket.OPEN))}
               size="icon"
-              className="h-9 w-9 shrink-0 rounded-xl bg-primary hover:bg-primary/95 text-primary-foreground font-bold shadow-md cursor-pointer flex items-center justify-center"
-              title="Send message"
+              className="h-10 w-10 shrink-0 rounded-xl bg-primary hover:bg-primary/95 text-primary-foreground font-bold shadow-md cursor-pointer flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+              title={isSearching ? "Searching..." : "Search"}
             >
-              <Send className="h-3.5 w-3.5" />
+              {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             </Button>
           </form>
         </div>
-      </div>
 
-      {/* COLUMN 2: CENTER - Results (Flexible width) */}
-      <div className="w-full lg:flex-1 min-w-0 flex flex-col border border-border/80 rounded-2xl overflow-hidden bg-card/10 backdrop-blur-sm h-full">
-        {/* Center Header */}
-        <div className="px-5 py-3 border-b border-border bg-card/45 flex justify-between items-center shrink-0">
-          <div className="flex items-center gap-2">
-            <Target className="h-4 w-4 text-accent animate-pulse" />
-            <span className="font-mono text-xs font-bold text-foreground uppercase tracking-wider">
-              Visual Search Index Matches
-            </span>
-          </div>
-          {activeMsg?.results && activeMsg.results.length > 0 && (
-            <Badge className="bg-accent/15 border-accent/30 text-accent text-[9px] font-bold py-0.5 px-2">
-              {activeMsg.results.length} Matches
-            </Badge>
-          )}
-        </div>
-
-        {/* Results Body */}
-        <div className="flex-1 overflow-y-auto p-4">
-          {activeMsg?.results && activeMsg.results.length > 0 ? (
-            <div className="space-y-4">
-              <SearchResults
-                results={activeMsg.results}
-                activeQuery={activeMsg.content}
-                onAnalyse={onAnalyseFrame}
-              />
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center h-full text-center max-w-sm mx-auto space-y-4">
-              <div className="h-12 w-12 rounded-2xl bg-accent/5 flex items-center justify-center border border-accent/10 cyber-grid relative">
-                <span className="h-2 w-2 rounded-full bg-accent animate-ping absolute" />
-                <span className="h-1.5 w-1.5 rounded-full bg-accent absolute" />
+        {/* QUERY + INTERPRETED AS Panel */}
+        {activeMsg?.intent && (
+          <div className="border-t border-border/50 bg-card/40">
+            <div className="px-5 py-3 flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="flex-1 min-w-0">
+                <div className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-0.5">Query</div>
+                <p className="text-xs text-foreground font-semibold truncate">
+                  &ldquo;{activeMsg.content}&rdquo;
+                </p>
               </div>
-              <h3 className="font-mono text-xs font-bold uppercase tracking-wider text-foreground">Awaiting Query Execution</h3>
-              <p className="text-[10px] text-muted-foreground/80 leading-relaxed">
-                Submit a text query in the visual assistant panel to search indexing databases. Matching surveillance frames will display here.
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
 
-      {/* COLUMN 3: RIGHT - AI Reasoning (25% width) */}
-      <div className="w-full lg:w-[25%] shrink-0 flex flex-col border border-border/80 rounded-2xl overflow-hidden bg-card/25 backdrop-blur-sm h-full">
-        {/* Right Header */}
-        <div className="px-5 py-3 border-b border-border bg-card/45 flex items-center gap-2 shrink-0">
-          <Sparkles className="h-4 w-4 text-primary animate-pulse" />
-          <span className="font-mono text-xs font-bold text-foreground uppercase tracking-wider">
-            NLU Intent Deconstruction
-          </span>
-        </div>
+              <div className="hidden sm:block h-8 w-px bg-border/50" />
 
-        {/* Right Body */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-5">
-          {activeMsg?.intent ? (
-            <div className="space-y-5">
-              {/* Query Breakdown */}
-              <div className="space-y-2.5">
-                <span className="text-[9px] text-muted-foreground uppercase font-bold tracking-wider">Query Scope</span>
-                <div className="space-y-2 text-[10px]">
-                  <div className="flex justify-between items-center gap-2 border-b border-border/40 pb-1.5">
-                    <span className="text-muted-foreground">Intent Type</span>
-                    <Badge variant="outline" className="text-[8px] border-primary/20 text-primary uppercase font-bold py-0">
-                      {activeMsg.intent.intent_type || "N/A"}
+              <div className="flex flex-col gap-1">
+                <div className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Interpreted As</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {activeMsg.intent.object_class && (
+                    <Badge variant="outline" className="text-[10px] border-primary/30 text-primary bg-primary/5 px-2">
+                      Object: {[activeMsg.intent.color, activeMsg.intent.object_class].filter(Boolean).join(" ")}
                     </Badge>
-                  </div>
-
-                  <div className="flex justify-between items-center gap-2 border-b border-border/40 pb-1.5">
-                    <span className="text-muted-foreground">Class Target</span>
-                    <span className="font-mono bg-muted border border-border px-1.5 py-0.5 rounded text-[9px] text-foreground font-bold">
-                      {activeMsg.intent.object_class || "N/A"}
-                    </span>
-                  </div>
-
-                  <div className="flex justify-between items-center gap-2 border-b border-border/40 pb-1.5">
-                    <span className="text-muted-foreground">Attribute Filter</span>
-                    <span className="font-mono text-[9px] text-foreground font-bold">
-                      {activeMsg.intent.color || activeMsg.intent.attributes?.clothing || activeMsg.intent.attributes?.carrying || "None"}
-                    </span>
-                  </div>
-
-                  <div className="flex justify-between items-start gap-2 border-b border-border/40 pb-1.5">
-                    <span className="text-muted-foreground">Locked Cameras</span>
-                    <div className="flex flex-wrap gap-1 justify-end max-w-[120px]">
-                      {activeMsg.intent.camera_ids && activeMsg.intent.camera_ids.length > 0 ? (
-                        activeMsg.intent.camera_ids.map((cid: string) => (
-                          <Badge key={cid} variant="secondary" className="text-[8px] px-1 py-0 border-border">
-                            {cid.replace("cam-", "")}
-                          </Badge>
-                        ))
-                      ) : (
-                        <span className="text-muted-foreground">All Feeds</span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex justify-between items-start gap-2 border-b border-border/40 pb-1.5">
-                    <span className="text-muted-foreground">Time Range</span>
-                    <span className="text-right font-medium text-foreground">
-                      {activeMsg.intent.time_range?.description || "All indices"}
-                    </span>
-                  </div>
-
-                  <div className="flex flex-col gap-1 pt-1">
-                    <span className="text-[8px] text-muted-foreground uppercase font-bold tracking-wider">
-                      Translated Prompt Expansion
-                    </span>
-                    <div className="bg-background/95 border border-border rounded-lg p-2 font-mono text-[8px] text-foreground leading-relaxed break-all">
-                      {activeMsg.intent.rewritten_query || activeMsg.intent.raw_query || "N/A"}
-                    </div>
-                  </div>
+                  )}
+                  {activeMsg.intent.action && (
+                    <Badge variant="outline" className="text-[10px] border-amber-500/40 text-amber-400 bg-amber-500/5 px-2">
+                      Action: {activeMsg.intent.action}
+                    </Badge>
+                  )}
+                  {activeMsg.intent.camera_ids && activeMsg.intent.camera_ids.length > 0 && (
+                    <Badge variant="outline" className="text-[10px] border-border text-muted-foreground px-2">
+                      Camera: Filtered
+                    </Badge>
+                  )}
+                  {!activeMsg.intent.object_class && !activeMsg.intent.action && (
+                    <Badge variant="outline" className="text-[10px] border-border text-muted-foreground px-2">
+                      General query
+                    </Badge>
+                  )}
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+      </div>
 
-              {/* Detected Entities */}
-              {detectedEntities.length > 0 && (
-                <div className="space-y-2 border-t border-border/30 pt-4">
-                  <span className="text-[9px] text-muted-foreground uppercase font-bold tracking-wider">Detected Entities</span>
-                  <div className="grid grid-cols-2 gap-2">
-                    {detectedEntities.map((ent) => (
-                      <div key={ent.label} className="bg-background/55 border border-border/40 rounded-lg p-2 flex items-center justify-between gap-2">
-                        <span className="font-mono text-[9px] font-bold text-foreground capitalize truncate">{ent.label}</span>
-                        <Badge variant="secondary" className="text-[8px] font-bold py-0 px-1 bg-accent/10 border-accent/20 text-accent">
-                          {ent.count}
-                        </Badge>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Confidence Score Indicators */}
-              {activeMsg.results && activeMsg.results.length > 0 && (
-                <div className="space-y-3 border-t border-border/30 pt-4">
-                  <span className="text-[9px] text-muted-foreground uppercase font-bold tracking-wider">AI Accuracy Metrics</span>
-                  <div className="space-y-2 text-[10px]">
-                    <div className="space-y-1">
-                      <div className="flex justify-between font-semibold">
-                        <span className="text-muted-foreground">Max Similarity Score</span>
-                        <span className="text-primary font-bold">{(confidenceStats.max * 100).toFixed(0)}%</span>
-                      </div>
-                      <div className="h-1.5 w-full bg-border/40 rounded-full overflow-hidden">
-                        <div className="h-full bg-primary rounded-full" style={{ width: `${confidenceStats.max * 100}%` }} />
-                      </div>
-                    </div>
-                    <div className="space-y-1">
-                      <div className="flex justify-between font-semibold">
-                        <span className="text-muted-foreground">Average Score</span>
-                        <span className="text-accent font-bold">{(confidenceStats.avg * 100).toFixed(0)}%</span>
-                      </div>
-                      <div className="h-1.5 w-full bg-border/40 rounded-full overflow-hidden">
-                        <div className="h-full bg-accent rounded-full" style={{ width: `${confidenceStats.avg * 100}%` }} />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Timeline Matches */}
-              {activeMsg.results && activeMsg.results.length > 0 && (
-                <div className="space-y-2 border-t border-border/30 pt-4">
-                  <span className="text-[9px] text-muted-foreground uppercase font-bold tracking-wider flex items-center gap-1">
-                    <Clock className="h-3 w-3 text-accent" />
-                    Timeline Matches
-                  </span>
-                  <div className="space-y-1.5 max-h-[160px] overflow-y-auto pr-1">
-                    {activeMsg.results.map((res) => (
-                      <div 
-                        key={res.id} 
-                        onClick={() => onAnalyseFrame(res)}
-                        className="flex items-center justify-between gap-2 border border-border/40 hover:border-accent/40 bg-background/40 hover:bg-accent/[0.02] p-2 rounded-lg cursor-pointer transition-all"
-                      >
-                        <div className="flex flex-col min-w-0">
-                          <span className="text-[9px] font-bold text-foreground truncate">{res.camera_id}</span>
-                          <span className="text-[8px] text-muted-foreground/60 font-mono">Frame #{res.frame_number}</span>
-                        </div>
-                        <Badge variant="outline" className="text-[8px] font-mono border-accent/25 text-accent font-bold py-0.5 px-1.5 shrink-0 bg-accent/[0.01]">
-                          {formatVideoTime(res.timestamp_ms)}
-                        </Badge>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+      {/* ═══ BODY: Search Processing OR Results ═══ */}
+      <div className="w-full flex-1 flex flex-col min-h-0">
+        {isSearching ? (
+          /* Search Processing Overlay — tied to real API request */
+          <div className="flex flex-col items-center justify-center h-full gap-6">
+            <div className="relative">
+              <div className="h-16 w-16 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center shadow-[0_0_20px_rgba(56,189,248,0.15)]">
+                <Loader2 className="h-7 w-7 text-primary animate-spin" />
+              </div>
+            </div>
+            <div className="text-center space-y-2">
+              <h3 className="font-mono text-sm font-bold uppercase tracking-widest text-foreground">
+                Searching Visual Index
+              </h3>
+              <p className="text-xs text-primary font-semibold tracking-wide animate-pulse">
+                {SEARCH_STAGES[searchStage]}
+              </p>
+              {activeVideo && (
+                <p className="text-[10px] text-muted-foreground">
+                  Source: {activeVideo.filename}
+                </p>
               )}
             </div>
-          ) : (
-            <div className="text-center py-12 text-xs text-muted-foreground flex flex-col items-center justify-center gap-2 h-full">
-              <Clock className="h-6 w-6 text-muted-foreground/30" />
-              <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground/50">Awaiting NLU extraction</span>
+            <div className="flex gap-1.5">
+              {SEARCH_STAGES.map((_, i) => (
+                <div
+                  key={i}
+                  className={`h-1 rounded-full transition-all duration-500 ${
+                    i === searchStage % SEARCH_STAGES.length
+                      ? "w-6 bg-primary"
+                      : "w-1.5 bg-border"
+                  }`}
+                />
+              ))}
             </div>
-          )}
-        </div>
+          </div>
+        ) : activeMsg?.results ? (
+          <div className="h-full overflow-y-auto pr-2 pb-20">
+            <SearchResults
+              results={activeMsg.results}
+              activeQuery={activeMsg.content}
+              intent={activeMsg.intent}
+              onAnalyse={onAnalyseFrame}
+            />
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center h-full text-center space-y-4 opacity-70">
+            <div className="h-16 w-16 rounded-3xl bg-primary/10 flex items-center justify-center border border-primary/20 shadow-[0_0_15px_rgba(56,189,248,0.2)]">
+              <Sparkles className="h-8 w-8 text-primary animate-pulse" />
+            </div>
+            <h3 className="font-mono text-sm font-bold uppercase tracking-wider text-foreground">Visual Search Ready</h3>
+            <p className="text-xs text-muted-foreground max-w-md leading-relaxed">
+              {activeVideo
+                ? <>Video loaded. Search the visual index using natural language.<br/><span className="text-primary mt-2 inline-block">&ldquo;Show me the frames where the yellow car is reversing&rdquo;</span></>
+                : <>Upload a video or query the visual index. For example: <br/><span className="text-primary mt-2 inline-block">&ldquo;Show me the frames where the yellow car is reversing&rdquo;</span></>
+              }
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

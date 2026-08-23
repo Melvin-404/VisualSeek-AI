@@ -50,8 +50,8 @@ async def readiness_check(db: AsyncSession = Depends(get_db)) -> Dict[str, Any]:
         logger.error("Readiness check: Redis connection failed", error=str(e))
         details["redis"] = "unhealthy"
 
-    # Evaluate readiness
-    if not (db_ok and redis_ok):
+    # Evaluate readiness (Redis is optional in development)
+    if not (db_ok and (redis_ok or settings.API_ENV.lower() == "development")):
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail={"status": "unready", "services": details}

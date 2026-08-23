@@ -106,3 +106,84 @@ class TemporalSearch:
                     })
 
         return anomalies
+
+    def analyze_action(self, session, hits: List[Dict[str, Any]], intent) -> List[Dict[str, Any]]:
+        """
+        For action queries (e.g. 'reversing'), attempts to validate the motion.
+        Groups hits by track_id and queries the full track sequence to compute movement.
+        Filters out stationary vehicles.
+        Extracts temporal event windows (start to end of movement).
+        Appends an honest verification status to the result metadata.
+        """
+        if not intent.is_action_query or not intent.action:
+            return hits
+
+        # Group initial hits by segment_id and track_id
+        tracks_to_check = {}
+        for hit in hits:
+            # We must have a track_id to analyze motion
+            track_id = hit.get("raw_labels", {}).get("detections", [{}])[0].get("track_id")
+            if track_id is None:
+                continue
+
+            seg_id = hit.get("segment_id")
+            key = (seg_id, track_id)
+            if key not in tracks_to_check:
+                tracks_to_check[key] = []
+            tracks_to_check[key].append(hit)
+
+        filtered_hits = []
+
+        # Analyze each track's full temporal sequence
+        for (seg_id, track_id), track_hits in tracks_to_check.items():
+            # Query all bounding boxes for this track_id in this segment ordered by time
+            # Note: We need to pull from the DB. DetectedObject has segment_id, track_id.
+            db_tracks = session.query(DetectedObject).filter(
+                DetectedObject.segment_id == seg_id,
+                DetectedObject.track_id == track_id
+            ).order_by(DetectedObject.frame_number).all()
+
+            if not db_tracks or len(db_tracks) < 3:
+                # Not enough frames to determine motion
+                continue
+            
+            # Calculate total displacement from first to last frame
+            first = db_tracks[0]
+            last = db_tracks[-1]
+            
+            # center x,y = (bbox_x + (bbox_w/2))
+            # Wait, the DB model schema: bbox_x, bbox_y, bbox_w, bbox_h
+            cx_start = first.bbox_x + (first.bbox_w / 2)
+            cy_start = first.bbox_y + (first.bbox_h / 2)
+            
+            cx_end = last.bbox_x + (last.bbox_w / 2)
+            cy_end = last.bbox_y + (last.bbox_h / 2)
+            
+            # Normalized displacement distance
+            displacement = ((cx_end - cx_start)**2 + (cy_end - cy_start)**2) ** 0.5
+            
+            # Threshold for considering it "moving" vs "stationary"
+            # Since bbox is normalized [0, 1], displacement > 0.05 is ~5% of screen width
+            if displacement < 0.05:
+                # Vehicle is stationary, filter it out completely
+                continue
+
+            # It is moving! Set the event window based on the full track lifespan
+            event_start_ms = first.timestamp_ms
+            event_end_ms = last.timestamp_ms
+            
+            # Take the highest scoring hit from this track to represent it
+            best_hit = max(track_hits, key=lambda h: h.get("score", 0))
+            
+            obj_class = intent.object_class or "Object"
+            action = intent.action
+            
+            best_hit["event_start_ms"] = event_start_ms
+            best_hit["event_end_ms"] = event_end_ms
+            best_hit["action_status"] = f"{obj_class.capitalize()} detected moving, but '{action}' motion could not be reliably verified from 2D trajectory."
+            best_hit["action_verified"] = False
+            
+            filtered_hits.append(best_hit)
+            
+        return filtered_hits
+

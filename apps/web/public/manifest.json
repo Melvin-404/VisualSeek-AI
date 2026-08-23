@@ -1,11 +1,11 @@
 {
-  "name": "Vision Query AI",
-  "short_name": "VisionQuery",
+  "name": "VisualSeek AI",
+  "short_name": "VisualSeekAI",
   "description": "Enterprise GPU-powered Vision Analytics Platform",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0a0a0a",
-  "theme_color": "#76b900",
+  "theme_color": "#38bdf8",
   "orientation": "portrait-primary",
   "icons": [
     {

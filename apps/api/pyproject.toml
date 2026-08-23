@@ -1,7 +1,7 @@
 [project]
 name = "api"
 version = "0.1.0"
-description = "FastAPI backend for Vision Query"
+description = "FastAPI backend for VisualSeek AI"
 dependencies = [
     "fastapi>=0.111.0",
     "pydantic-settings>=2.3.0",

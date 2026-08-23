@@ -24,6 +24,10 @@ interface SearchResult {
     description: string;
     video_path: string;
   };
+  action_status?: string;
+  action_verified?: boolean;
+  event_start_ms?: number;
+  event_end_ms?: number;
 }
 
 const CAMERA_NAMES: Record<string, string> = {
@@ -43,8 +47,12 @@ export default function SearchPage() {
   // Sync video timeline seek in modal
   useEffect(() => {
     if (activeResult && modalVideoRef.current) {
-      modalVideoRef.current.currentTime = activeResult.timestamp_ms / 1000.0;
+      const seekTime = activeResult.event_start_ms !== undefined 
+        ? activeResult.event_start_ms / 1000.0 
+        : activeResult.timestamp_ms / 1000.0;
+      modalVideoRef.current.currentTime = seekTime;
       if (modalIsPlaying) {
+
         modalVideoRef.current.play().catch(() => {});
       }
     }
@@ -172,8 +180,13 @@ export default function SearchPage() {
               {/* Timeline seek bar */}
               <div className="space-y-1">
                 <div className="flex justify-between text-[10px] text-muted-foreground font-bold">
-                  <span>Match point: {formatVideoTime(activeResult.timestamp_ms)}</span>
+                  {activeResult.event_start_ms !== undefined && activeResult.event_end_ms !== undefined ? (
+                    <span>Match event: {formatVideoTime(activeResult.event_start_ms)} - {formatVideoTime(activeResult.event_end_ms)}</span>
+                  ) : (
+                    <span>Match point: {formatVideoTime(activeResult.timestamp_ms)}</span>
+                  )}
                   <span>
+
                     Playback:{" "}
                     {modalVideoRef.current ? formatVideoTime(modalVideoRef.current.currentTime * 1000) : "00:00"}
                   </span>
@@ -232,7 +245,10 @@ export default function SearchPage() {
                     className="text-xs h-8 text-foreground cursor-pointer"
                     onClick={() => {
                       if (modalVideoRef.current) {
-                        modalVideoRef.current.currentTime = activeResult.timestamp_ms / 1000.0;
+                        const seekTime = activeResult.event_start_ms !== undefined 
+                          ? activeResult.event_start_ms / 1000.0 
+                          : activeResult.timestamp_ms / 1000.0;
+                        modalVideoRef.current.currentTime = seekTime;
                       }
                     }}
                   >
@@ -244,7 +260,7 @@ export default function SearchPage() {
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] bg-muted px-2 py-1 rounded border border-border text-muted-foreground flex items-center gap-1 font-bold">
                     <Target className="h-3 w-3 text-primary" />
-                    MATCH SCORE: {(activeResult.score * 100).toFixed(0)}%
+                    RELEVANCE SCORE: {(activeResult.score * 100).toFixed(0)}
                   </span>
                   <Button variant="outline" size="sm" className="h-8 text-foreground cursor-pointer">
                     <Share2 className="h-3.5 w-3.5 mr-1" />

@@ -50,7 +50,7 @@ def setup_keycloak():
     # Update realm with correct brute force detection settings (use failureFactor instead of maxLoginFailures)
     update_payload = {
         "realm": "visionquery",
-        "displayName": "Vision Query",
+        "displayName": "VisualSeek AI",
         "enabled": True,
         "bruteForceProtected": True,
         "failureFactor": 5,
@@ -71,7 +71,7 @@ def setup_keycloak():
     clients = [
         {
             "clientId": "visionquery-frontend",
-            "name": "Vision Query Frontend",
+            "name": "VisualSeek AI Frontend",
             "enabled": True,
             "publicClient": True,
             "standardFlowEnabled": True,
@@ -92,7 +92,7 @@ def setup_keycloak():
         },
         {
             "clientId": "visionquery-api",
-            "name": "Vision Query API",
+            "name": "VisualSeek AI API",
             "enabled": True,
             "publicClient": False,
             "secret": "supersecretkeycloakclientsecret",

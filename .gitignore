@@ -6,6 +6,8 @@ web_modules/
 # Next.js build and cache
 .next/
 out/
+build/
+dist/
 
 # Turborepo build cache
 .turbo/
@@ -37,11 +39,10 @@ coverage.xml
 *,cover
 .hypothesis/
 .pytest_cache/
+.mypy_cache/
 
 # Build artifacts
-build/
 develop-eggs/
-dist/
 downloads/
 eggs/
 .eggs/
@@ -62,6 +63,8 @@ var/
 .env.production.local
 *.env
 !.env.example
+*.pem
+*.key
 
 # OS files
 .DS_Store
@@ -75,3 +78,31 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+
+# Runtime/generated files
+uploads/
+temp/
+tmp/
+cache/
+caches/
+apps/api/app/storage/*.pkl
+apps/web/public/uploads/
+db_data/
+pgsql/
+*.zip
+scratch/
+milvus_migrations.db
+query
+
+# Generated AI/video data
+processed_videos/
+frames/
+detections/
+embeddings/
+model_cache/
+
+# Large model files
+*.pt
+*.pth
+*.onnx
+*.safetensors

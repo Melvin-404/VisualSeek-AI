@@ -48,7 +48,8 @@ class SemanticSearch:
                 connections.connect(
                     alias="default",
                     host=settings.MILVUS_HOST,
-                    port=settings.MILVUS_PORT
+                    port=settings.MILVUS_PORT,
+                    timeout=1.0
                 )
                 logger.info("Milvus connection established in SemanticSearch", host=settings.MILVUS_HOST)
         except Exception as e:

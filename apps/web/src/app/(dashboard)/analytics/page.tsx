@@ -37,7 +37,7 @@ export default function AnalyticsPage() {
 
   // Load custom arrangement from localStorage
   useEffect(() => {
-    const savedOrder = localStorage.getItem("visionquery_dashboard_layout");
+    const savedOrder = localStorage.getItem("visualseek_dashboard_layout");
     if (savedOrder) {
       try {
         const orderIds = JSON.parse(savedOrder) as string[];
@@ -61,7 +61,7 @@ export default function AnalyticsPage() {
   const saveLayout = (newWidgets: Widget[]) => {
     setWidgets(newWidgets);
     localStorage.setItem(
-      "visionquery_dashboard_layout",
+      "visualseek_dashboard_layout",
       JSON.stringify(newWidgets.map((w) => w.id))
     );
   };

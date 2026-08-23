@@ -1,7 +1,7 @@
 {
-  "name": "visionquery-ai",
+  "name": "visualseek-ai",
   "version": "1.0.0",
-  "description": "Enterprise-grade monorepo for Vision Query",
+  "description": "Enterprise-grade monorepo for VisualSeek AI",
   "private": true,
   "engines": {
     "node": ">=20.0.0"

@@ -84,7 +84,7 @@ class VectorSearchService:
             for i in range(self.pool_size):
                 alias = f"pool_conn_{i}"
                 try:
-                    connections.connect(alias=alias, host=self.host, port=self.port)
+                    connections.connect(alias=alias, host=self.host, port=self.port, timeout=1.0)
                     self.pool.put(alias)
                 except Exception as e:
                     logger.error("Failed to connect Milvus pool alias", alias=alias, error=str(e))
@@ -115,7 +115,7 @@ class VectorSearchService:
             # Ensure connection is still active/registered in pymilvus
             if not connections.has_connection(alias):
                 try:
-                    connections.connect(alias=alias, host=self.host, port=self.port)
+                    connections.connect(alias=alias, host=self.host, port=self.port, timeout=1.0)
                 except Exception as e:
                     logger.error("Failed to reconnect Milvus alias", alias=alias, error=str(e))
             return alias

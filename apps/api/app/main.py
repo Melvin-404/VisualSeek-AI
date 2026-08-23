@@ -146,14 +146,17 @@ def setup_opentelemetry(app: FastAPI):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """FastAPI lifecycle manager executing startup and shutdown resource logic."""
-    logger.info("Application starting up...")
+    logger.info("Application starting up... verifying DB connectivity...")
     
     # Verify DB connectivity on startup
     from app.db.session import engine
     from sqlalchemy import text
     try:
+        logger.info("Before async with engine.connect()")
         async with engine.connect() as conn:
+            logger.info("Before conn.execute(SELECT 1)")
             await conn.execute(text("SELECT 1"))
+            logger.info("After conn.execute(SELECT 1)")
         logger.info("Database connection verified successfully.")
     except Exception as e:
         logger.critical("Database connection failed on startup!", error=str(e))
@@ -168,8 +171,8 @@ async def lifespan(app: FastAPI):
 
 # Initialize FastAPI app
 app = FastAPI(
-    title="Vision Query API",
-    description="Enterprise-grade backend API for Vision Query",
+    title="VisualSeek AI API",
+    description="Enterprise-grade backend API for VisualSeek AI",
     version="1.0.0",
     lifespan=lifespan,
     docs_url="/docs",

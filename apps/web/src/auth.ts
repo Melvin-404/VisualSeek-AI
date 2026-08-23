@@ -14,14 +14,14 @@ const providers = isDev
       Credentials({
         name: "Dev Login",
         credentials: {
-          email: { label: "Email", type: "email", placeholder: "admin@visionquery.local" },
+          email: { label: "Email", type: "email", placeholder: "admin@visualseek.local" },
         },
         async authorize(credentials) {
           // Auto-approve any login in dev
           return {
             id: "dev-user-001",
             name: "Dev Admin",
-            email: (credentials?.email as string) || "admin@visionquery.local",
+            email: (credentials?.email as string) || "admin@visualseek.local",
             role: "admin",
           };
         },

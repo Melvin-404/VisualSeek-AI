@@ -8,7 +8,7 @@
   --color-card-foreground: #f1f5f9;
   --color-popover: #0d111a;
   --color-popover-foreground: #f1f5f9;
-  --color-primary: #00ff66; /* Neon AI Green */
+  --color-primary: #38bdf8; /* Cool Blue */
   --color-primary-foreground: #080a0f;
   --color-secondary: #0052ff; /* Cyber Blue */
   --color-secondary-foreground: #f1f5f9;
@@ -20,11 +20,11 @@
   --color-destructive-foreground: #fafafa;
   --color-border: #1e293b;
   --color-input: #131a26;
-  --color-ring: #00ff66;
+  --color-ring: #38bdf8;
   --color-sidebar: #05070a;
   --color-sidebar-foreground: #94a3b8;
-  --color-sidebar-active: #00ff66;
-  --color-success: #00ff66;
+  --color-sidebar-active: #38bdf8;
+  --color-success: #22c55e;
   --color-warning: #eab308;
   --color-info: #00f0ff;
 
@@ -90,8 +90,8 @@
   }
 
   .gpu-glow {
-    box-shadow: 0 0 20px rgba(0, 255, 102, 0.15),
-      0 0 40px rgba(0, 255, 102, 0.05);
+    box-shadow: 0 0 20px rgba(56, 189, 248, 0.15),
+      0 0 40px rgba(56, 189, 248, 0.05);
   }
 
   .gpu-glow-blue {
@@ -115,8 +115,8 @@
   }
   .glass-hover:hover {
     background: rgba(13, 17, 26, 0.85);
-    border-color: rgba(0, 255, 102, 0.25);
-    box-shadow: 0 8px 32px 0 rgba(0, 255, 102, 0.05);
+    border-color: rgba(56, 189, 248, 0.25);
+    box-shadow: 0 8px 32px 0 rgba(56, 189, 248, 0.05);
   }
 
   .cyber-grid {
@@ -131,7 +131,7 @@
     display: block;
     position: absolute;
     top: 0; left: 0; bottom: 0; right: 0;
-    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 255, 102, 0.08) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(56, 189, 248, 0.08) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
     z-index: 2;
     background-size: 100% 4px, 6px 100%;
     pointer-events: none;

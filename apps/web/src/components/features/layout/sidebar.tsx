@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Camera,
   Search,
@@ -12,6 +12,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Shield,
+  LayoutDashboard,
+  History,
+  Cpu,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUIStore } from "@/lib/store";
@@ -23,10 +26,12 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { href: "/cameras", label: "Cameras", icon: Camera },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/search", label: "Search", icon: Search },
-  { href: "/alerts", label: "Alerts", icon: Bell },
+  { href: "/cameras", label: "Cameras", icon: Camera },
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
+  { href: "/alerts", label: "Alerts", icon: Bell },
+  { href: "/history", label: "History", icon: History },
 ];
 
 const bottomItems: NavItem[] = [
@@ -51,13 +56,13 @@ export function Sidebar() {
         <Shield className="h-7 w-7 shrink-0 text-primary" />
         {!sidebarCollapsed && (
           <span className="ml-2.5 text-sm font-bold tracking-tight text-foreground">
-            VisionQuery
+            VisualSeek AI
           </span>
         )}
       </div>
 
       {/* Main nav */}
-      <nav className="flex-1 space-y-1 px-2 py-3" aria-label="Primary">
+      <nav className="flex-1 space-y-1 px-2 py-3 overflow-y-auto" aria-label="Primary">
         {navItems.map((item) => {
           const isActive = pathname.startsWith(item.href);
           return (

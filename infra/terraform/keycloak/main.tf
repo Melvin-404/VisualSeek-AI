@@ -1,8 +1,8 @@
 resource "keycloak_realm" "visionquery" {
   realm             = "visionquery"
   enabled           = true
-  display_name      = "Vision Query"
-  display_name_html = "<b>Vision Query</b>"
+  display_name      = "VisualSeek AI"
+  display_name_html = "<b>VisualSeek AI</b>"
 
   login_theme = "keycloak"
 
@@ -72,7 +72,7 @@ resource "keycloak_openid_client_scope" "scopes" {
 resource "keycloak_openid_client" "frontend" {
   realm_id              = keycloak_realm.visionquery.id
   client_id             = "visionquery-frontend"
-  name                  = "Vision Query Frontend"
+  name                  = "VisualSeek AI Frontend"
   enabled               = true
   access_type           = "PUBLIC"
   standard_flow_enabled = true
@@ -95,7 +95,7 @@ resource "keycloak_openid_client" "frontend" {
 resource "keycloak_openid_client" "api" {
   realm_id                     = keycloak_realm.visionquery.id
   client_id                    = "visionquery-api"
-  name                         = "Vision Query API"
+  name                         = "VisualSeek AI API"
   enabled                      = true
   access_type                  = "CONFIDENTIAL"
   standard_flow_enabled        = true

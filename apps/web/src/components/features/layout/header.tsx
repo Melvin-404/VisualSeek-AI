@@ -16,7 +16,7 @@ export function Header() {
     .map((n) => n[0])
     .join("")
     .toUpperCase()
-    .slice(0, 2) || "VQ";
+    .slice(0, 2) || "VS";
 
   return (
     <header className="flex h-14 items-center justify-between border-b border-border bg-card px-6">
@@ -27,20 +27,6 @@ export function Header() {
 
       {/* Right: actions */}
       <div className="flex items-center gap-2">
-        {/* Search shortcut */}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={toggleSearch}
-          className="hidden gap-2 text-muted-foreground sm:flex"
-          aria-label="Open search dialog"
-        >
-          <Search className="h-4 w-4" />
-          <span className="text-xs">Search</span>
-          <kbd className="pointer-events-none ml-1 hidden rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground sm:inline-block">
-            ⌘K
-          </kbd>
-        </Button>
 
         {/* Notifications */}
         <Button

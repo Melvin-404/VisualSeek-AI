@@ -41,8 +41,13 @@ class SearchIntent:
     gender: Optional[str] = None
     spatial_zone: Optional[str] = None
     time_range_hours: Optional[float] = None
+    action: Optional[str] = None
+    is_action_query: bool = False
     raw_query: str = ""
     semantic_query: str = ""
+
+ACTION_KEYWORDS = ["reversing", "running", "walking", "moving", "entering", "leaving", "turning"]
+
 
 class QueryParser:
     """Fast, offline, rule-based keyword query parser."""
@@ -100,6 +105,12 @@ class QueryParser:
             # Match person attribute
             if word in PERSON_ATTRIBUTES:
                 intent.attributes.append(word)
+
+            # Match action verbs
+            if word in ACTION_KEYWORDS:
+                intent.action = word
+                intent.is_action_query = True
+
 
         # Handle compound attributes (e.g., "hard hat", "hi-vis vest")
         if "hard hat" in query_clean:

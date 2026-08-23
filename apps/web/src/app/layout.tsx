@@ -6,8 +6,8 @@ import "@/styles/globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "Vision Query AI",
-    template: "%s | Vision Query AI",
+    default: "VisualSeek AI",
+    template: "%s | VisualSeek AI",
   },
   description: "Enterprise GPU-powered Vision Analytics Platform",
   manifest: "/manifest.json",
@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#00ff66",
+  themeColor: "#38bdf8",
   width: "device-width",
   initialScale: 1,
 };
