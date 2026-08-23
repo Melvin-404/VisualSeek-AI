@@ -46,5 +46,3 @@ pnpm run dev
 Sensitive environment variables are not included in this repository. 
 Copy `.env.example` to `.env` (or `.env.local` for the web app) and populate it with the appropriate values.
 
-## Presentation
-The internship presentation is located at `docs/CSE7000-Internship_PPT_Melvin.pptx` (Note: Currently not present in the workspace but the directory is set up).

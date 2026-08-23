@@ -106,3 +106,5 @@ model_cache/
 *.pth
 *.onnx
 *.safetensors
+
+.env.docker
